@@ -1,0 +1,435 @@
+# Circulação (spec 003, mod_circulation, schema circulation).
+copies:
+  get:
+    operationId: listCopies
+    tags: [circulation]
+    summary: Lista exemplares com filtro opcional por obra e estado
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - name: workId
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/Id
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/CopyStatus
+      - $ref: ../components/common.yaml#/parameters/Limit
+      - $ref: ../components/common.yaml#/parameters/Cursor
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    responses:
+      '200':
+        description: Página de exemplares enriquecidos com o título da obra.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/CopyPage
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+  post:
+    operationId: registerCopy
+    tags: [circulation]
+    summary: Cadastra um exemplar com código de barras único (ADR-0006)
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/CsrfToken
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas.yaml#/RegisterCopyRequest
+    responses:
+      '201':
+        description: Exemplar cadastrado no estado `available`.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+          Location:
+            $ref: ../components/common.yaml#/headers/Location
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/Copy
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound
+      '409':
+        $ref: ../components/common.yaml#/responses/Conflict
+
+copyRetire:
+  parameters:
+    - $ref: ../components/common.yaml#/parameters/CopyId
+  post:
+    operationId: retireCopy
+    tags: [circulation]
+    summary: Dá baixa definitiva em exemplar disponível (`available` -> `retired`)
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/CsrfToken
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas.yaml#/VersionInput
+    responses:
+      '200':
+        description: Exemplar marcado como baixado (`retired`).
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/Copy
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound
+      '409':
+        $ref: ../components/common.yaml#/responses/Conflict
+
+workAvailability:
+  parameters:
+    - $ref: ../components/common.yaml#/parameters/WorkId
+  get:
+    operationId: getWorkAvailability
+    tags: [circulation]
+    summary: Consulta disponibilidade de exemplares e fila de espera de uma obra
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    responses:
+      '200':
+        description: Contagem por estado e indicação se a reserva pode ser feita.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/WorkAvailability
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound
+
+loans:
+  post:
+    operationId: lendCopy
+    tags: [circulation]
+    summary: Empresta um exemplar a um aluno (RN-01, RN-02, RN-03, RN-05, RN-06, ACL + Calendário)
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/CsrfToken
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas.yaml#/LendCopyRequest
+    responses:
+      '201':
+        description: Empréstimo registrado por 14 dias letivos.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+          Location:
+            $ref: ../components/common.yaml#/headers/Location
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/Loan
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound
+      '409':
+        $ref: ../components/common.yaml#/responses/Conflict
+
+loanRenew:
+  parameters:
+    - $ref: ../components/common.yaml#/parameters/LoanId
+  post:
+    operationId: renewLoan
+    tags: [circulation]
+    summary: Renova empréstimo ativo por mais 14 dias letivos (RN-01, RN-05, RN-07)
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/CsrfToken
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas.yaml#/VersionInput
+    responses:
+      '200':
+        description: Prazo recalculado no calendário letivo.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/Loan
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound
+      '409':
+        $ref: ../components/common.yaml#/responses/Conflict
+
+returns:
+  post:
+    operationId: returnCopy
+    tags: [circulation]
+    summary: Devolve um exemplar, calcula multa na mesma transação e atende fila de reserva (RN-04..RN-08)
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/CsrfToken
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas.yaml#/ReturnCopyRequest
+    responses:
+      '200':
+        description: Devolução registrada atomicamente com multa (se houver) e eventual reserva atendida.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/ReturnCopyResult
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound
+      '409':
+        $ref: ../components/common.yaml#/responses/Conflict
+
+holds:
+  post:
+    operationId: placeHold
+    tags: [circulation]
+    summary: Entra na fila de reserva de uma obra sem exemplares disponíveis (RF-03, RN-07)
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/CsrfToken
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas.yaml#/PlaceHoldRequest
+    responses:
+      '201':
+        description: Reserva criada em `waiting` na fila FIFO da obra.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+          Location:
+            $ref: ../components/common.yaml#/headers/Location
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/Hold
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound
+      '409':
+        $ref: ../components/common.yaml#/responses/Conflict
+
+holdWithdraw:
+  parameters:
+    - $ref: ../components/common.yaml#/parameters/HoldId
+  post:
+    operationId: withdrawReservedCopy
+    tags: [circulation]
+    summary: Efetiva retirada de exemplar reservado antes de expirar a janela de 3 dias (RN-07)
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/CsrfToken
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas.yaml#/VersionInput
+    responses:
+      '200':
+        description: Reserva cumprida e empréstimo aberto.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/WithdrawHoldResult
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound
+      '409':
+        $ref: ../components/common.yaml#/responses/Conflict
+
+holdExpire:
+  parameters:
+    - $ref: ../components/common.yaml#/parameters/HoldId
+  post:
+    operationId: expireHold
+    tags: [circulation]
+    summary: Dá baixa em reserva expirada após 3 dias, promovendo o próximo ou liberando o exemplar
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/CsrfToken
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas.yaml#/VersionInput
+    responses:
+      '200':
+        description: Reserva expirada; próximo da fila promovido ou exemplar devolvido para `available`.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/ExpireHoldResult
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound
+      '409':
+        $ref: ../components/common.yaml#/responses/Conflict
+
+finePay:
+  parameters:
+    - $ref: ../components/common.yaml#/parameters/FineId
+  post:
+    operationId: payFine
+    tags: [circulation]
+    summary: Registra a quitação de uma multa pendente (RF-02, RN-01)
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/CsrfToken
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas.yaml#/VersionInput
+    responses:
+      '200':
+        description: Multa quitada.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/Fine
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound
+      '409':
+        $ref: ../components/common.yaml#/responses/Conflict
+
+studentSummary:
+  parameters:
+    - $ref: ../components/common.yaml#/parameters/StudentRegistration
+  get:
+    operationId: getStudentSummary
+    tags: [circulation]
+    summary: Consulta empréstimos ativos, reservas e multas do aluno (RF-05)
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    responses:
+      '200':
+        description: Resumo completo da situação do aluno na biblioteca.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/StudentSummary
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound

@@ -1,0 +1,8 @@
+# Lint dos contratos OpenAPI 3.1.1 (ADR-0014 e ADR-0018 da PoC).
+apis:
+  biblioteca:
+    root: contracts/openapi/openapi.yaml
+  facades:
+    root: contracts/internal/facades.yaml
+extends:
+  - recommended

@@ -1,0 +1,92 @@
+openapi: 3.1.1
+info:
+  title: Biblioteca Universitária — API
+  version: 0.1.0
+  summary: Contrato da PoC AI-First da Biblioteca Universitária (Node.js + TypeScript + Hono).
+  description: |
+    Fonte da verdade da API (princípio I da constituição e ADR-0014). Convenções em ADR-0020 e
+    ADR-0030: prefixo `/api/v1`, JSON e parâmetros em inglês (`camelCase`), ids UUIDv7, datas
+    ISO-8601 em UTC, dinheiro em centavos inteiros (`amountCents`, `dailyRateCents`), erros RFC 9457
+    com `type` estável (`/problems/<código>`), mensagens para pessoas em pt-BR e paginação por cursor
+    opaco (`limit`, `cursor`, `nextCursor`).
+
+    Autenticação (ADR-0011): no navegador, cookie `HttpOnly` `lib_sid` com proteção anti-CSRF no
+    cookie `lib_csrf` devolvido no header `X-CSRF-Token` em toda mutação; fora do navegador (testes
+    automatizados e clientes HTTP), `Authorization: Bearer <token>`.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: http://localhost:3000
+    description: API Node local
+tags:
+  - name: health
+    description: Sondas de vida e prontidão do servidor
+  - name: auth
+    description: Login da Universidade, sessão local e contas de demonstração
+  - name: catalog
+    description: Acervo de obras bibliográficas (`mod_catalog`)
+  - name: circulation
+    description: Exemplares, empréstimos, devoluções, reservas e multas (`mod_circulation`)
+  - name: notices
+    description: Avisos disparados por eventos de domínio (`mod_notices`)
+  - name: config
+    description: Parâmetros administrativos e tabela de multa (`mod_config`)
+  - name: audit
+    description: Consulta da trilha de auditoria (`audit_reader`)
+paths:
+  /health/live:
+    $ref: ./paths/health.yaml#/live
+  /health/ready:
+    $ref: ./paths/health.yaml#/ready
+  /api/v1/auth/login:
+    $ref: ./paths/auth.yaml#/login
+  /api/v1/auth/logout:
+    $ref: ./paths/auth.yaml#/logout
+  /api/v1/auth/dev-accounts:
+    $ref: ./paths/auth.yaml#/devAccounts
+  /api/v1/auth/me:
+    $ref: ./paths/auth.yaml#/me
+  /api/v1/catalog/works:
+    $ref: ./paths/catalog.yaml#/works
+  /api/v1/catalog/works/{workId}:
+    $ref: ./paths/catalog.yaml#/work
+  /api/v1/circulation/copies:
+    $ref: ./paths/circulation.yaml#/copies
+  /api/v1/circulation/copies/{copyId}/retire:
+    $ref: ./paths/circulation.yaml#/copyRetire
+  /api/v1/circulation/works/{workId}/availability:
+    $ref: ./paths/circulation.yaml#/workAvailability
+  /api/v1/circulation/loans:
+    $ref: ./paths/circulation.yaml#/loans
+  /api/v1/circulation/loans/{loanId}/renew:
+    $ref: ./paths/circulation.yaml#/loanRenew
+  /api/v1/circulation/returns:
+    $ref: ./paths/circulation.yaml#/returns
+  /api/v1/circulation/holds:
+    $ref: ./paths/circulation.yaml#/holds
+  /api/v1/circulation/holds/{holdId}/withdraw:
+    $ref: ./paths/circulation.yaml#/holdWithdraw
+  /api/v1/circulation/holds/{holdId}/expire:
+    $ref: ./paths/circulation.yaml#/holdExpire
+  /api/v1/circulation/fines/{fineId}/pay:
+    $ref: ./paths/circulation.yaml#/finePay
+  /api/v1/circulation/students/{registration}/summary:
+    $ref: ./paths/circulation.yaml#/studentSummary
+  /api/v1/notices:
+    $ref: ./paths/notices.yaml#/notices
+  /api/v1/config/fine-rate:
+    $ref: ./paths/config.yaml#/fineRate
+  /api/v1/audit-events:
+    $ref: ./paths/audit.yaml#/auditEvents
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: lib_sid
+      description: Sessão local do navegador (`HttpOnly`, `SameSite=Lax`).
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token de sessão emitido para testes e clientes fora do navegador.

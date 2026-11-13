@@ -1,0 +1,255 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Dentro do módulo Circulação — fatias verticais híbridas",
+    "output": "03-modulo-fatias.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "write",
+        "label": "Fatia de escrita (return-copy)",
+        "focus": ["router", "c_endpoint", "c_handler", "domain", "repo", "pg"],
+        "note": "return-copy: endpoint -> mediador -> handler -> agregados em domain/ -> repositório -> PostgreSQL."
+      },
+      {
+        "id": "read",
+        "label": "Fatia de leitura (list-copies)",
+        "focus": ["router", "l_endpoint", "l_handler", "l_repo", "pg"],
+        "note": "list-copies usa readOnly: true + listCopies(cursor) e enriquece títulos via CatalogFacade."
+      },
+      {
+        "id": "facade",
+        "label": "Porta e bordas externas",
+        "focus": ["other", "facade", "domain", "repo"],
+        "note": "Domínio declara AcademicRegistryPort e SchoolCalendarPort; outro módulo só vê public/."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "router",
+      "type": "external",
+      "label": "Hono · rotas",
+      "sublabel": "apps/api-node",
+      "pos": [30, 220],
+      "size": [160, 64]
+    },
+    {
+      "id": "c_endpoint",
+      "type": "frontend",
+      "label": "endpoint.ts",
+      "sublabel": "presentation · Zod",
+      "pos": [270, 100],
+      "size": [170, 64]
+    },
+    {
+      "id": "c_handler",
+      "type": "backend",
+      "label": "handler.ts",
+      "sublabel": "returnCopy · prepare/handle",
+      "pos": [520, 100],
+      "size": [200, 64],
+      "tag": "slices.test.ts"
+    },
+    {
+      "id": "domain",
+      "type": "security",
+      "label": "domain/",
+      "sublabel": "Copy · Loan · Fine · Hold · Student",
+      "pos": [790, 100],
+      "size": [220, 64],
+      "tag": "puro · ≥ 80% mutação"
+    },
+    {
+      "id": "repo",
+      "type": "backend",
+      "label": "infrastructure/",
+      "sublabel": "Kysely · ACL · Cal · InMemory",
+      "pos": [1080, 100],
+      "size": [210, 64]
+    },
+    {
+      "id": "l_endpoint",
+      "type": "frontend",
+      "label": "endpoint.ts",
+      "sublabel": "presentation · Zod",
+      "pos": [270, 330],
+      "size": [170, 64]
+    },
+    {
+      "id": "l_handler",
+      "type": "backend",
+      "label": "handler.ts",
+      "sublabel": "listCopies · readOnly",
+      "pos": [520, 330],
+      "size": [200, 64],
+      "tag": "slices.test.ts"
+    },
+    {
+      "id": "l_repo",
+      "type": "database",
+      "label": "kysely-circulation",
+      "sublabel": "consulta por cursor",
+      "pos": [790, 330],
+      "size": [220, 64]
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "PostgreSQL / PGlite",
+      "sublabel": "circulation.* + audit.events",
+      "pos": [1080, 330],
+      "size": [210, 64],
+      "tag": "role mod_circulation"
+    },
+    {
+      "id": "other",
+      "type": "external",
+      "label": "outro módulo",
+      "sublabel": "catalog · config · notices",
+      "pos": [30, 540],
+      "size": [170, 64]
+    },
+    {
+      "id": "facade",
+      "type": "messagebus",
+      "label": "public/",
+      "sublabel": "CirculationDeps · ACL · Cal · Clock",
+      "pos": [270, 540],
+      "size": [230, 64]
+    },
+    {
+      "id": "modts",
+      "type": "cloud",
+      "label": "module.ts",
+      "sublabel": "registra as 12 rotas HTTP",
+      "pos": [790, 540],
+      "size": [220, 64]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "packages/modules/circulation — @biblioteca/module-circulation",
+      "wraps": ["c_endpoint", "c_handler", "domain", "repo", "l_endpoint", "l_handler", "l_repo", "pg", "facade", "modts"],
+      "pad": 56
+    },
+    {
+      "kind": "security-group",
+      "label": "slices/return-copy",
+      "wraps": ["c_endpoint", "c_handler"]
+    },
+    {
+      "kind": "security-group",
+      "label": "slices/list-copies",
+      "wraps": ["l_endpoint", "l_handler"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "r-c",
+      "from": "router",
+      "to": "c_endpoint",
+      "label": "POST",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "r-l",
+      "from": "router",
+      "to": "l_endpoint",
+      "label": "GET",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "c-eh",
+      "from": "c_endpoint",
+      "to": "c_handler",
+      "label": "mediador",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-hd",
+      "from": "c_handler",
+      "to": "domain",
+      "label": "regras"
+    },
+    {
+      "id": "d-r",
+      "from": "domain",
+      "to": "repo",
+      "label": "portas",
+      "variant": "dashed"
+    },
+    {
+      "id": "r-pg",
+      "from": "repo",
+      "to": "pg",
+      "label": "UPDATE",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 58
+    },
+    {
+      "id": "l-eh",
+      "from": "l_endpoint",
+      "to": "l_handler",
+      "label": "mediador",
+      "variant": "emphasis"
+    },
+    {
+      "id": "l-hr",
+      "from": "l_handler",
+      "to": "l_repo"
+    },
+    {
+      "id": "l-rpg",
+      "from": "l_repo",
+      "to": "pg",
+      "label": "SELECT"
+    },
+    {
+      "id": "o-f",
+      "from": "other",
+      "to": "facade",
+      "label": "usa"
+    },
+    {
+      "id": "f-lh",
+      "from": "facade",
+      "to": "l_handler",
+      "label": "deps",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Fatia = caso de uso",
+      "items": [
+        "Endpoint + handler numa pasta coesa por caso de uso",
+        "12 fatias em circulation combinadas com testes InMemory e PGlite (ADR-0015)"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Domínio e Clean Architecture",
+      "items": [
+        "Copy, Loan, Fine, Hold, Student e Calendar sem Kysely nem HTTP",
+        "Testado por valores-limite e ≥ 80% no Stryker (ADR-0025, ADR-0028)"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Fronteiras externas",
+      "items": [
+        "AcademicRegistryPort traduz discente da Secretaria (ACL)",
+        "SchoolCalendarPort consome dias_letivos como Conformista (ADR-0023)"
+      ]
+    }
+  ]
+}

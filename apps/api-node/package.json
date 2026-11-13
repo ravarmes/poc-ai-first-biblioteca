@@ -1,0 +1,17 @@
+{
+  "name": "@biblioteca/api-node",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@biblioteca/contract": "*",
+    "@biblioteca/core": "*",
+    "@biblioteca/module-audit": "*",
+    "@biblioteca/module-catalog": "*",
+    "@biblioteca/module-circulation": "*",
+    "@biblioteca/module-config": "*",
+    "@biblioteca/module-notices": "*",
+    "@hono/node-server": "^1.13.8",
+    "hono": "^4.7.4",
+    "kysely": "^0.28.2"
+  }
+}

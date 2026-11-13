@@ -1,0 +1,73 @@
+# Consulta da trilha de auditoria (spec 005, role audit_reader, schema audit).
+auditEvents:
+  get:
+    operationId: listAuditEvents
+    tags: [audit]
+    summary: Lista eventos da trilha de auditoria com filtros e paginação por cursor
+    description: Restrito à `librarian` (ADR-0010, ADR-0012, ADR-0013). Ordem decrescente de ocorrência.
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - name: action
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 64
+          pattern: '^[a-z0-9_]+\.[a-z0-9_]+$'
+      - name: actorId
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/Id
+      - name: resourceType
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 32
+          pattern: '^[a-z0-9_]+$'
+      - name: resourceId
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+      - name: result
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/AuditResult
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - $ref: ../components/common.yaml#/parameters/Limit
+      - $ref: ../components/common.yaml#/parameters/Cursor
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    responses:
+      '200':
+        description: Página de eventos auditados.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/AuditEventPage
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden

@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Visão geral — PoC Biblioteca Universitária (Node.js + React)",
+    "output": "01-visao-geral.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "runtime",
+        "label": "Fluxo principal",
+        "focus": ["browser", "web", "api", "pg"],
+        "note": "React fala com API Hono via /api/v1; toda mutação passa pelo Mediador e grava em PostgreSQL."
+      },
+      {
+        "id": "external",
+        "label": "Secretaria (ACL) e Calendário",
+        "focus": ["api", "secretaria", "calendario"],
+        "note": "Secretaria entra via ACL (discente -> AcademicStudent) e Calendário entra em modo Conformista."
+      },
+      {
+        "id": "notices",
+        "label": "Avisos pós-commit",
+        "focus": ["api", "pg", "smtp"],
+        "note": "CopyReturned v1 dispara e-mail fora da transação de devolução com idempotencyKey."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "Navegador",
+      "sublabel": "Bibliotecária & Aluno",
+      "pos": [40, 220],
+      "size": [170, 64]
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "apps/web-react",
+      "sublabel": "React 19 · TanStack · i18next",
+      "pos": [290, 220],
+      "size": [200, 64],
+      "tag": "Vite + MSW"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "apps/api-node",
+      "sublabel": "Node 22 + Hono · monólito modular",
+      "pos": [610, 220],
+      "size": [230, 64],
+      "tag": "MODULES=*"
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "PostgreSQL 18 / PGlite",
+      "sublabel": "catalog · circulation · notices · config · audit",
+      "pos": [950, 220],
+      "size": [250, 64]
+    },
+    {
+      "id": "smtp",
+      "type": "messagebus",
+      "label": "Serviço de E-mail",
+      "sublabel": "EmailSenderPort · pós-COMMIT",
+      "pos": [610, 40],
+      "size": [230, 64]
+    },
+    {
+      "id": "secretaria",
+      "type": "security",
+      "label": "Secretaria Acadêmica",
+      "sublabel": "ACL · discente -> AcademicStudent",
+      "pos": [380, 410],
+      "size": [240, 64]
+    },
+    {
+      "id": "calendario",
+      "type": "cloud",
+      "label": "Calendário Acadêmico",
+      "sublabel": "Conformista · dias_letivos",
+      "pos": [830, 410],
+      "size": [240, 64]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Runtime local / processo único — apps + PostgreSQL",
+      "wraps": ["web", "api", "pg"],
+      "pad": 34
+    }
+  ],
+  "connections": [
+    {
+      "id": "b-w",
+      "from": "browser",
+      "to": "web",
+      "label": "UI pt-BR",
+      "variant": "emphasis"
+    },
+    {
+      "id": "w-a",
+      "from": "web",
+      "to": "api",
+      "label": "HTTP + lib_sid",
+      "variant": "emphasis"
+    },
+    {
+      "id": "a-pg",
+      "from": "api",
+      "to": "pg",
+      "label": "Kysely + UoW",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "a-smtp",
+      "from": "api",
+      "to": "smtp",
+      "label": "CopyReturned v1",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "a-sec",
+      "from": "api",
+      "to": "secretaria",
+      "label": "ACL",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "a-cal",
+      "from": "api",
+      "to": "calendario",
+      "label": "Conformista",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Stack única",
+      "items": [
+        "Backend: Node.js 22 + TypeScript + Hono (ADR-0026)",
+        "Frontend: React 19 + TanStack Router/Query + Tailwind (ADR-0027)"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Isolamento no banco",
+      "items": [
+        "6 schemas (auth, catalog, circulation, notices, config, audit) com roles NOLOGIN",
+        "Zero foreign key cruzada entre módulos (ADR-0016, ADR-0017)"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Integrações e borda",
+      "items": [
+        "Secretaria protegida por camada anticorrupção (ADR-0023)",
+        "Devolução + multa + reserva atômicas; e-mail idempotente após COMMIT (ADR-0024)"
+      ]
+    }
+  ]
+}

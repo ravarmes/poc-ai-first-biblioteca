@@ -1,0 +1,17 @@
+{
+  "name": "@biblioteca/module-circulation",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./public": "./public/index.ts",
+    "./module": "./module.ts"
+  },
+  "dependencies": {
+    "@biblioteca/contract": "*",
+    "@biblioteca/core": "*",
+    "@biblioteca/module-catalog": "*",
+    "@biblioteca/module-config": "*",
+    "@biblioteca/module-notices": "*",
+    "kysely": "^0.28.2"
+  }
+}

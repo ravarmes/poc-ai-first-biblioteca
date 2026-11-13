@@ -1,0 +1,37 @@
+# Avisos de reserva por e-mail (spec 004, mod_notices, schema notices).
+notices:
+  get:
+    operationId: listNotices
+    tags: [notices]
+    summary: Lista avisos de reserva disparados pelo sistema
+    description: |
+      Alunos veem apenas os próprios avisos (comparando com sua matrícula); bibliotecária pode
+      filtrar por matrícula ou consultar todos os envios.
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - name: studentRegistration
+        in: query
+        required: false
+        schema:
+          $ref: ../components/schemas.yaml#/StudentRegistration
+      - $ref: ../components/common.yaml#/parameters/Limit
+      - $ref: ../components/common.yaml#/parameters/Cursor
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    responses:
+      '200':
+        description: Página de avisos ordenados do mais recente ao mais antigo.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/NoticePage
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden

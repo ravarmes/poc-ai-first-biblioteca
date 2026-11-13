@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Monorepo modular — pacotes e dependências",
+    "output": "02-monorepo.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "deps",
+        "label": "Regra de dependência",
+        "focus": ["api", "catalog", "circulation", "notices", "cfg_audit", "core"],
+        "note": "apps -> modules -> core + contract; módulo fala com módulo somente via public/."
+      },
+      {
+        "id": "contracts",
+        "label": "Contrato primeiro",
+        "focus": ["openapi", "contract", "web", "api", "tests"],
+        "note": "contracts/openapi espelha Zod em packages/contract para validar backend e formulários."
+      },
+      {
+        "id": "db",
+        "label": "Contrato de banco",
+        "focus": ["core", "dbcontracts"],
+        "note": "contracts/db guarda migrations SQL e o migrator de packages/core as aplica."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "openapi",
+      "type": "cloud",
+      "label": "contracts/openapi",
+      "sublabel": "OpenAPI 3.1.1 · Redocly",
+      "pos": [340, 40],
+      "size": [210, 64]
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "apps/web-react",
+      "sublabel": "React 19 · Vite · MSW",
+      "pos": [40, 170],
+      "size": [200, 64]
+    },
+    {
+      "id": "contract",
+      "type": "cloud",
+      "label": "packages/contract",
+      "sublabel": "@biblioteca/contract · Zod",
+      "pos": [340, 170],
+      "size": [210, 64]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "apps/api-node",
+      "sublabel": "Hono · composition root",
+      "pos": [680, 170],
+      "size": [210, 64],
+      "tag": "MODULES=*"
+    },
+    {
+      "id": "tests",
+      "type": "external",
+      "label": "suítes & lint",
+      "sublabel": "Vitest · Stryker · dep-cruiser",
+      "pos": [990, 170],
+      "size": [210, 64]
+    },
+    {
+      "id": "catalog",
+      "type": "backend",
+      "label": "modules/catalog",
+      "sublabel": "Acervo (suporte)",
+      "pos": [80, 340],
+      "size": [190, 64]
+    },
+    {
+      "id": "circulation",
+      "type": "backend",
+      "label": "modules/circulation",
+      "sublabel": "Circulação (Core)",
+      "pos": [350, 340],
+      "size": [200, 64]
+    },
+    {
+      "id": "notices",
+      "type": "backend",
+      "label": "modules/notices",
+      "sublabel": "Avisos (suporte)",
+      "pos": [620, 340],
+      "size": [190, 64]
+    },
+    {
+      "id": "cfg_audit",
+      "type": "backend",
+      "label": "modules/config + audit",
+      "sublabel": "Multa e auditoria",
+      "pos": [890, 340],
+      "size": [210, 64]
+    },
+    {
+      "id": "core",
+      "type": "security",
+      "label": "packages/core",
+      "sublabel": "Mediador · UoW · Auth · RFC 9457 · Auditoria",
+      "pos": [260, 500],
+      "size": [480, 64]
+    },
+    {
+      "id": "dbcontracts",
+      "type": "database",
+      "label": "contracts/db",
+      "sublabel": "SQL migrations + SHA-256",
+      "pos": [890, 500],
+      "size": [210, 64]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "packages/modules — comunicação cruzada apenas por public/",
+      "wraps": ["catalog", "circulation", "notices", "cfg_audit"],
+      "pad": 30
+    }
+  ],
+  "connections": [
+    {
+      "id": "oa-c",
+      "from": "openapi",
+      "to": "contract",
+      "label": "espelha",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "c-w",
+      "from": "contract",
+      "to": "web",
+      "label": "schemas",
+      "variant": "dashed"
+    },
+    {
+      "id": "c-a",
+      "from": "contract",
+      "to": "api",
+      "label": "parseInput",
+      "variant": "emphasis"
+    },
+    {
+      "id": "t-a",
+      "from": "tests",
+      "to": "api",
+      "label": "e2e"
+    },
+    {
+      "id": "a-circ",
+      "from": "api",
+      "to": "circulation",
+      "label": "registra",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "circ-cat",
+      "from": "circulation",
+      "to": "catalog",
+      "label": "public/",
+      "variant": "dashed"
+    },
+    {
+      "id": "circ-not",
+      "from": "circulation",
+      "to": "notices",
+      "label": "public/",
+      "variant": "dashed"
+    },
+    {
+      "id": "cat-core",
+      "from": "catalog",
+      "to": "core",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "circ-core",
+      "from": "circulation",
+      "to": "core",
+      "label": "usa",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "not-core",
+      "from": "notices",
+      "to": "core",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "cfg-core",
+      "from": "cfg_audit",
+      "to": "core",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "dbc-core",
+      "from": "dbcontracts",
+      "to": "core",
+      "label": "migrator",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "dependency-cruiser",
+      "items": [
+        "Proíbe importar internos de outro módulo (modulo-so-pelo-public)",
+        "Proíbe core -> modules e src -> tests (ADR-0015)"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "package.json exports",
+      "items": [
+        "Cada módulo expõe apenas ./public e ./module",
+        "Runtime Node bloqueia atalhos não declarados"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Contrato e banco",
+      "items": [
+        "OpenAPI 3.1.1 + Zod + RFC 9457 (ADR-0014)",
+        "Verificados por npm run contract:lint e deps:check"
+      ]
+    }
+  ]
+}

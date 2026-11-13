@@ -1,0 +1,14 @@
+{
+  "name": "@biblioteca/module-config",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./public": "./public/index.ts",
+    "./module": "./module.ts"
+  },
+  "dependencies": {
+    "@biblioteca/contract": "*",
+    "@biblioteca/core": "*",
+    "kysely": "^0.28.2"
+  }
+}

@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Prova de extração e bordas — MODULES e ACL/Conformista",
+    "output": "06-extracao-e-integracoes.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "split",
+        "label": "Modo separado (MODULES)",
+        "focus": ["web", "api_cat", "api_circ", "pg"],
+        "note": "MODULES=catalog e MODULES=circulation,... sobem separados trocando CatalogFacade por CatalogHttpClient."
+      },
+      {
+        "id": "external",
+        "label": "ACL e Conformista",
+        "focus": ["api_circ", "sec", "cal"],
+        "note": "Secretaria traduzida por ACL; Calendário consumido em modo Conformista sem acoplar domínio."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "apps/web-react",
+      "sublabel": "Não muda no modo split",
+      "pos": [40, 220],
+      "size": [190, 64]
+    },
+    {
+      "id": "api_cat",
+      "type": "backend",
+      "label": "Processo Acervo",
+      "sublabel": "MODULES=catalog · /internal/v1/*",
+      "pos": [380, 90],
+      "size": [270, 64],
+      "tag": "apps/api-node"
+    },
+    {
+      "id": "api_circ",
+      "type": "backend",
+      "label": "Processo Balcão",
+      "sublabel": "MODULES=circulation,notices,config,audit",
+      "pos": [380, 350],
+      "size": [270, 64],
+      "tag": "CATALOG_ADAPTER=http"
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "PostgreSQL 18 / PGlite",
+      "sublabel": "roles mod_catalog · mod_circulation",
+      "pos": [840, 90],
+      "size": [250, 64]
+    },
+    {
+      "id": "sec",
+      "type": "security",
+      "label": "Secretaria (ACL)",
+      "sublabel": "discente -> AcademicStudent",
+      "pos": [840, 300],
+      "size": [250, 60]
+    },
+    {
+      "id": "cal",
+      "type": "cloud",
+      "label": "Calendário (Conformista)",
+      "sublabel": "dias_letivos -> computeDueDate",
+      "pos": [840, 430],
+      "size": [250, 60]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Mesma base apps/api-node · deploy split",
+      "wraps": ["api_cat", "api_circ"],
+      "pad": 34
+    }
+  ],
+  "connections": [
+    {
+      "id": "w-cat",
+      "from": "web",
+      "to": "api_cat",
+      "label": "/api/v1/catalog/*",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "w-circ",
+      "from": "web",
+      "to": "api_circ",
+      "label": "/api/v1/circulation/*",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "circ-cat-http",
+      "from": "api_circ",
+      "to": "api_cat",
+      "label": "CatalogHttpClient (Bearer)",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "cat-pg",
+      "from": "api_cat",
+      "to": "pg",
+      "label": "mod_catalog"
+    },
+    {
+      "id": "circ-pg",
+      "from": "api_circ",
+      "to": "pg",
+      "label": "mod_circulation",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "circ-sec",
+      "from": "api_circ",
+      "to": "sec",
+      "label": "ACL",
+      "variant": "dashed"
+    },
+    {
+      "id": "circ-cal",
+      "from": "api_circ",
+      "to": "cal",
+      "label": "Conformista",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Modo padrão (monólito)",
+      "items": [
+        "MODULES=* executa todas as fachadas em processo",
+        "Zero salto de rede com fronteira preservada (ADR-0009)"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Modo split provado",
+      "items": [
+        "CATALOG_ADAPTER=http ativa CatalogHttpClient + SERVICE_TOKEN",
+        "Falha de rede no catálogo responde 503 RFC 9457 (split.accept.test.ts)"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Bordas externas",
+      "items": [
+        "ACL protege Student de termos crus da Secretaria (ra, sit_matricula)",
+        "Calendário em modo Conformista protege computeDueDate de feriados (ADR-0023)"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+# Problemas RFC 9457 (ADR-0014). O `type` é relativo e estável; `title` e `detail` em pt-BR.
+Problem:
+  type: object
+  required: [type, title, status]
+  properties:
+    type:
+      $ref: '#/ProblemType'
+    title:
+      type: string
+      description: Resumo curto em pt-BR, estável por `type`.
+    status:
+      type: integer
+      minimum: 400
+      maximum: 599
+    detail:
+      type: string
+      description: Explicação específica desta ocorrência, em pt-BR.
+    instance:
+      type: string
+      description: Caminho da requisição que gerou o problema.
+    requestId:
+      type: string
+      description: Mesmo valor do header `X-Request-Id`.
+    errors:
+      type: array
+      description: Presente apenas em `validation-error`.
+      items:
+        $ref: '#/FieldError'
+    currentVersion:
+      type: integer
+      minimum: 1
+      description: Presente apenas em `version-conflict` (ADR-0021).
+    checks:
+      $ref: ./schemas.yaml#/ReadinessChecks
+
+FieldError:
+  type: object
+  required: [field, message]
+  properties:
+    field:
+      type: string
+      description: "Caminho do campo ou nome do parâmetro (ex.: `barcode`, `dailyRateCents`)."
+    message:
+      type: string
+      description: Mensagem de erro em pt-BR.
+
+ProblemType:
+  type: string
+  enum:
+    - /problems/validation-error
+    - /problems/unauthenticated
+    - /problems/forbidden
+    - /problems/csrf-invalid
+    - /problems/not-found
+    - /problems/method-not-allowed
+    - /problems/version-conflict
+    - /problems/isbn-taken
+    - /problems/barcode-taken
+    - /problems/student-inactive
+    - /problems/pending-fine
+    - /problems/loan-limit-reached
+    - /problems/invalid-copy-state
+    - /problems/no-active-loan
+    - /problems/copy-available-use-loan
+    - /problems/hold-already-exists
+    - /problems/hold-expired
+    - /problems/wrong-hold-student
+    - /problems/active-hold-blocks-renewal
+    - /problems/fine-already-paid
+    - /problems/service-unavailable
+    - /problems/internal-error

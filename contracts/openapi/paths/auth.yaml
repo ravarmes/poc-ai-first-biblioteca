@@ -1,0 +1,98 @@
+# Autenticação e perfil do usuário autenticado (ADR-0010, ADR-0011).
+login:
+  post:
+    operationId: login
+    tags: [auth]
+    summary: Inicia sessão na biblioteca (Login da Universidade)
+    description: |
+      Autentica bibliotecária ou aluno por e-mail institucional, grava a sessão no servidor, emite
+      os cookies `lib_sid` (`HttpOnly`, `SameSite=Lax`) e `lib_csrf` para o navegador, e devolve
+      `accessToken` Bearer para testes e clientes HTTP. Registra `auth.login` na auditoria.
+    security: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas.yaml#/LoginRequest
+    responses:
+      '200':
+        description: Sessão criada.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/LoginResult
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+
+logout:
+  post:
+    operationId: logout
+    tags: [auth]
+    summary: Encerra a sessão atual
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/CsrfToken
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    responses:
+      '200':
+        description: Sessão encerrada.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/LogoutResult
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+
+devAccounts:
+  get:
+    operationId: listDevAccounts
+    tags: [auth]
+    summary: Lista contas de demonstração para o seletor rápido de perfil
+    security: []
+    responses:
+      '200':
+        description: Perfis disponíveis na biblioteca de demonstração (sem credenciais).
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/DevAccountList
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound
+
+me:
+  get:
+    operationId: getMe
+    tags: [auth]
+    summary: Consulta o perfil autenticado atual
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    responses:
+      '200':
+        description: Principal autenticado.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/Principal
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated

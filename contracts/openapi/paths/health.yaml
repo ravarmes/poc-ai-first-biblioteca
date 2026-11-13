@@ -1,0 +1,32 @@
+# Sondas de vida e prontidão da API.
+live:
+  get:
+    operationId: healthLive
+    tags: [health]
+    summary: Verifica se o processo está vivo
+    security: []
+    responses:
+      '200':
+        description: Processo ativo.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/HealthStatus
+      '500':
+        $ref: ../components/common.yaml#/responses/InternalError
+
+ready:
+  get:
+    operationId: healthReady
+    tags: [health]
+    summary: Verifica se a API está pronta e conectada ao PostgreSQL
+    security: []
+    responses:
+      '200':
+        description: Banco pronto para atender.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/HealthStatus
+      '503':
+        $ref: ../components/common.yaml#/responses/ServiceUnavailable

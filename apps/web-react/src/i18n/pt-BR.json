@@ -1,0 +1,41 @@
+{
+  "appTitle": "Biblioteca Universitária",
+  "appSubtitle": "PoC AI-First • Monólito Modular com Fatias Verticais e SDD",
+  "nav": {
+    "catalog": "Acervo",
+    "myLoans": "Meus Empréstimos e Avisos",
+    "desk": "Balcão de Circulação",
+    "settings": "Multa e Auditoria",
+    "logout": "Sair"
+  },
+  "roles": {
+    "librarian": "Bibliotecária",
+    "student": "Estudante"
+  },
+  "copyStatus": {
+    "available": "Disponível",
+    "on-loan": "Emprestado",
+    "reserved": "Reservado",
+    "retired": "Baixado"
+  },
+  "loanStatus": {
+    "open": "Em aberto",
+    "returned": "Devolvido"
+  },
+  "holdStatus": {
+    "waiting": "Na fila de espera",
+    "ready": "Pronta para retirada",
+    "fulfilled": "Retirada efetuada",
+    "expired": "Expirada",
+    "cancelled": "Cancelada"
+  },
+  "fineStatus": {
+    "pending": "Pendente",
+    "paid": "Quitada"
+  },
+  "auditResult": {
+    "success": "Sucesso",
+    "denied": "Negado",
+    "error": "Erro"
+  }
+}

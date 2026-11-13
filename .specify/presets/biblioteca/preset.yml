@@ -1,0 +1,7 @@
+name: biblioteca
+version: 1.0.0
+description: Preset Spec Kit da PoC Biblioteca Universitária (capacidade -> história por caso de uso -> critério [n.n] -> fatia vertical)
+templates:
+  - templates/spec-template.md
+  - templates/plan-template.md
+  - templates/tasks-template.md

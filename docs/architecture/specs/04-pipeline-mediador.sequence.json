@@ -1,0 +1,287 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Pipeline do Mediador — Devolução de exemplar (returnCopy)",
+    "output": "04-pipeline-mediador.html",
+    "viewBox": [1080, 690],
+    "column_fit": "spread",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "prepare",
+        "label": "Autorização + preparo",
+        "focus": ["endpoint", "mediator", "config", "catalog"],
+        "note": "Mediador checa role=librarian; ConfigFacade e CatalogFacade rodam em prepare fora da transação."
+      },
+      {
+        "id": "tx",
+        "label": "Transação + auditoria",
+        "focus": ["mediator", "handler", "pg"],
+        "note": "Loan fechado, Fine criada, Hold promovida e audit.events gravados no mesmo COMMIT."
+      },
+      {
+        "id": "after",
+        "label": "Aviso pós-COMMIT",
+        "focus": ["mediator", "notices", "pg"],
+        "note": "CopyReturned v1 chama NoticesFacade em outra transação com idempotencyKey."
+      }
+    ]
+  },
+  "participants": [
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "Bibliotecária",
+      "sublabel": "balcão React"
+    },
+    {
+      "id": "endpoint",
+      "type": "frontend",
+      "label": "endpoint.ts",
+      "sublabel": "return-copy"
+    },
+    {
+      "id": "mediator",
+      "type": "messagebus",
+      "label": "Mediador",
+      "sublabel": "packages/core"
+    },
+    {
+      "id": "config",
+      "type": "cloud",
+      "label": "Config",
+      "sublabel": "mod_config"
+    },
+    {
+      "id": "catalog",
+      "type": "cloud",
+      "label": "Catalog",
+      "sublabel": "mod_catalog"
+    },
+    {
+      "id": "handler",
+      "type": "backend",
+      "label": "handler.ts",
+      "sublabel": "circulation"
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "circ + audit"
+    },
+    {
+      "id": "notices",
+      "type": "security",
+      "label": "Notices",
+      "sublabel": "mod_notices"
+    }
+  ],
+  "segments": [
+    {
+      "from": 156,
+      "to": 212,
+      "label": "Entrada + autorização"
+    },
+    {
+      "from": 220,
+      "to": 308,
+      "label": "Preparo fora da tx"
+    },
+    {
+      "from": 316,
+      "to": 494,
+      "label": "Unidade de trabalho + auditoria"
+    },
+    {
+      "from": 502,
+      "to": 586,
+      "label": "Aviso pós-commit + resposta"
+    }
+  ],
+  "messages": [
+    {
+      "id": "post_ret",
+      "from": "browser",
+      "to": "endpoint",
+      "y": 172,
+      "label": "POST /api/v1/circulation/returns",
+      "variant": "emphasis"
+    },
+    {
+      "id": "send_uc",
+      "from": "endpoint",
+      "to": "mediator",
+      "y": 202,
+      "label": "send(returnCopy) · librarian",
+      "variant": "emphasis"
+    },
+    {
+      "id": "prep_rate",
+      "from": "mediator",
+      "to": "config",
+      "y": 236,
+      "label": "prepare: currentDailyRateCents()",
+      "variant": "default"
+    },
+    {
+      "id": "prep_work",
+      "from": "mediator",
+      "to": "catalog",
+      "y": 266,
+      "label": "prepare: getWork(workId)",
+      "variant": "default"
+    },
+    {
+      "id": "prep_ret",
+      "from": "catalog",
+      "to": "mediator",
+      "y": 296,
+      "label": "dailyRateCents + workTitle",
+      "variant": "return"
+    },
+    {
+      "id": "uow_begin",
+      "from": "mediator",
+      "to": "pg",
+      "y": 330,
+      "label": "BEGIN + set_config(circulation, mod_circulation)",
+      "variant": "default"
+    },
+    {
+      "id": "run_handler",
+      "from": "mediator",
+      "to": "handler",
+      "y": 360,
+      "label": "handle(ctx)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "db_write",
+      "from": "handler",
+      "to": "pg",
+      "y": 390,
+      "label": "UPDATE copy/loan + INSERT fine + UPDATE hold",
+      "variant": "emphasis"
+    },
+    {
+      "id": "emit_evt",
+      "from": "handler",
+      "to": "mediator",
+      "y": 420,
+      "label": "emit(copy.returned) + afterCommit(aviso)",
+      "variant": "return"
+    },
+    {
+      "id": "audit_commit",
+      "from": "mediator",
+      "to": "pg",
+      "y": 450,
+      "label": "INSERT audit.events + COMMIT",
+      "variant": "dashed"
+    },
+    {
+      "id": "commit_ok",
+      "from": "pg",
+      "to": "mediator",
+      "y": 480,
+      "label": "COMMIT OK",
+      "variant": "return"
+    },
+    {
+      "id": "after_notice",
+      "from": "mediator",
+      "to": "notices",
+      "y": 514,
+      "label": "afterCommit: CopyReturned (res-<holdId>)",
+      "variant": "security"
+    },
+    {
+      "id": "insert_dispatch",
+      "from": "notices",
+      "to": "pg",
+      "y": 544,
+      "label": "INSERT dispatches (idempotency_key)",
+      "variant": "security"
+    },
+    {
+      "id": "http_ok",
+      "from": "endpoint",
+      "to": "browser",
+      "y": 574,
+      "label": "200 { copy, loan, fine, assignedHold }",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "endpoint",
+      "from": 167,
+      "to": 580,
+      "type": "frontend"
+    },
+    {
+      "participant": "mediator",
+      "from": 197,
+      "to": 522,
+      "type": "messagebus"
+    },
+    {
+      "participant": "config",
+      "from": 231,
+      "to": 248,
+      "type": "cloud"
+    },
+    {
+      "participant": "catalog",
+      "from": 261,
+      "to": 302,
+      "type": "cloud"
+    },
+    {
+      "participant": "handler",
+      "from": 355,
+      "to": 426,
+      "type": "backend"
+    },
+    {
+      "participant": "pg",
+      "from": 325,
+      "to": 486,
+      "type": "database"
+    },
+    {
+      "participant": "notices",
+      "from": 509,
+      "to": 552,
+      "type": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Mesma transação (RN-08)",
+      "items": [
+        "Copy + Loan + Fine + Hold + audit.events commitam juntos",
+        "Negado na autorização grava authz.denied à parte e retorna 403 RFC 9457 (ADR-0013)"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Preparo fora da transação",
+      "items": [
+        "ConfigFacade e CatalogFacade leem antes de abrir lock em circulation",
+        "Evita duas conexões simultâneas presas ou deadlocks"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Outra transação (Notices)",
+      "items": [
+        "afterCommit roda apenas depois do COMMIT bem-sucedido",
+        "Chave res-<holdId> impede envio duplicado (ADR-0024)"
+      ]
+    }
+  ]
+}

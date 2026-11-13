@@ -1,0 +1,160 @@
+# Cabeçalhos, parâmetros e respostas reutilizáveis (ADR-0014, ADR-0020).
+headers:
+  RequestId:
+    description: Identificador da requisição ecoado em `X-Request-Id`.
+    schema:
+      type: string
+      pattern: '^[A-Za-z0-9._-]{1,128}$'
+  Location:
+    description: Endereço do recurso criado, relativo à API.
+    schema:
+      type: string
+      format: uri-reference
+
+parameters:
+  WorkId:
+    name: workId
+    in: path
+    required: true
+    description: Id da obra (UUIDv7).
+    schema:
+      $ref: ./schemas.yaml#/Id
+  CopyId:
+    name: copyId
+    in: path
+    required: true
+    description: Id do exemplar (UUIDv7).
+    schema:
+      $ref: ./schemas.yaml#/Id
+  LoanId:
+    name: loanId
+    in: path
+    required: true
+    description: Id do empréstimo (UUIDv7).
+    schema:
+      $ref: ./schemas.yaml#/Id
+  HoldId:
+    name: holdId
+    in: path
+    required: true
+    description: Id da reserva (UUIDv7).
+    schema:
+      $ref: ./schemas.yaml#/Id
+  FineId:
+    name: fineId
+    in: path
+    required: true
+    description: Id da multa (UUIDv7).
+    schema:
+      $ref: ./schemas.yaml#/Id
+  StudentRegistration:
+    name: registration
+    in: path
+    required: true
+    description: Matrícula acadêmica do aluno.
+    schema:
+      $ref: ./schemas.yaml#/StudentRegistration
+  RequestId:
+    name: X-Request-Id
+    in: header
+    required: false
+    description: Identificador da requisição opcional enviado pelo cliente.
+    schema:
+      type: string
+  CsrfToken:
+    name: X-CSRF-Token
+    in: header
+    required: false
+    description: Valor do cookie `lib_csrf`; obrigatório em mutações quando autenticado via cookie.
+    schema:
+      type: string
+  Limit:
+    name: limit
+    in: query
+    required: false
+    description: Tamanho máximo da página.
+    schema:
+      type: integer
+      minimum: 1
+      maximum: 100
+      default: 20
+  Cursor:
+    name: cursor
+    in: query
+    required: false
+    description: Cursor opaco devolvido em `nextCursor` na página anterior.
+    schema:
+      type: string
+      minLength: 1
+      maxLength: 512
+
+responses:
+  ValidationError:
+    description: Entrada inválida (`/problems/validation-error`).
+    headers:
+      X-Request-Id:
+        $ref: '#/headers/RequestId'
+    content:
+      application/problem+json:
+        schema:
+          $ref: ./problems.yaml#/Problem
+  Unauthenticated:
+    description: Sessão ou token ausente ou inválido (`/problems/unauthenticated`).
+    headers:
+      X-Request-Id:
+        $ref: '#/headers/RequestId'
+    content:
+      application/problem+json:
+        schema:
+          $ref: ./problems.yaml#/Problem
+  Forbidden:
+    description: Permissão insuficiente (`/problems/forbidden`) ou CSRF inválido (`/problems/csrf-invalid`).
+    headers:
+      X-Request-Id:
+        $ref: '#/headers/RequestId'
+    content:
+      application/problem+json:
+        schema:
+          $ref: ./problems.yaml#/Problem
+  NotFound:
+    description: Recurso inexistente (`/problems/not-found`).
+    headers:
+      X-Request-Id:
+        $ref: '#/headers/RequestId'
+    content:
+      application/problem+json:
+        schema:
+          $ref: ./problems.yaml#/Problem
+  Conflict:
+    description: |
+      Conflito de negócio ou concorrência otimista (`/problems/version-conflict`,
+      `/problems/isbn-taken`, `/problems/barcode-taken`, `/problems/student-inactive`,
+      `/problems/pending-fine`, `/problems/loan-limit-reached`, `/problems/invalid-copy-state`,
+      `/problems/no-active-loan`, `/problems/copy-available-use-loan`,
+      `/problems/hold-already-exists`, `/problems/hold-expired`, `/problems/wrong-hold-student`,
+      `/problems/active-hold-blocks-renewal`, `/problems/fine-already-paid`).
+    headers:
+      X-Request-Id:
+        $ref: '#/headers/RequestId'
+    content:
+      application/problem+json:
+        schema:
+          $ref: ./problems.yaml#/Problem
+  ServiceUnavailable:
+    description: Dependência essencial indisponível (`/problems/service-unavailable`).
+    headers:
+      X-Request-Id:
+        $ref: '#/headers/RequestId'
+    content:
+      application/problem+json:
+        schema:
+          $ref: ./problems.yaml#/Problem
+  InternalError:
+    description: Erro inesperado (`/problems/internal-error`).
+    headers:
+      X-Request-Id:
+        $ref: '#/headers/RequestId'
+    content:
+      application/problem+json:
+        schema:
+          $ref: ./problems.yaml#/Problem

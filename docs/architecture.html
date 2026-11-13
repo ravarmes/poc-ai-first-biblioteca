@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arquitetura — PoC Biblioteca Universitária</title>
+<style>
+:root{
+  --bg:#f6f7fb;--panel:#ffffff;--ink:#141a2a;--muted:#5b6478;--line:#dfe3ec;--soft:#eef1f7;
+  --accent:#0891b2;--accent-soft:#e0f5fa;
+  --c-core:#e11d48;--c-core-soft:#fde8ee;
+  --c-cat:#059669;--c-cat-soft:#e3f6ee;
+  --c-circ:#d97706;--c-circ-soft:#fdf1df;
+  --c-not:#7c3aed;--c-not-soft:#efe8fd;
+  --c-cfg:#2563eb;--c-cfg-soft:#e5edfd;
+  --c-aud:#0d9488;--c-aud-soft:#dcf5f1;
+  --c-obs:#2563eb;--c-obs-soft:#e5edfd;
+  --mono:ui-monospace,"JetBrains Mono","SFMono-Regular",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0a0e1a;--panel:#111727;--ink:#e6e9f2;--muted:#9aa3b8;--line:#232b40;--soft:#171e31;
+  --accent:#22d3ee;--accent-soft:#0d2a33;
+  --c-core:#fb7185;--c-core-soft:#3a1520;
+  --c-cat:#34d399;--c-cat-soft:#0f2e24;
+  --c-circ:#fbbf24;--c-circ-soft:#33260c;
+  --c-not:#a78bfa;--c-not-soft:#241a40;
+  --c-cfg:#60a5fa;--c-cfg-soft:#14223d;
+  --c-aud:#2dd4bf;--c-aud-soft:#0d2f2b;
+  --c-obs:#60a5fa;--c-obs-soft:#14223d;
+}}
+:root[data-theme="dark"]{
+  --bg:#0a0e1a;--panel:#111727;--ink:#e6e9f2;--muted:#9aa3b8;--line:#232b40;--soft:#171e31;
+  --accent:#22d3ee;--accent-soft:#0d2a33;
+  --c-core:#fb7185;--c-core-soft:#3a1520;
+  --c-cat:#34d399;--c-cat-soft:#0f2e24;
+  --c-circ:#fbbf24;--c-circ-soft:#33260c;
+  --c-not:#a78bfa;--c-not-soft:#241a40;
+  --c-cfg:#60a5fa;--c-cfg-soft:#14223d;
+  --c-aud:#2dd4bf;--c-aud-soft:#0d2f2b;
+  --c-obs:#60a5fa;--c-obs-soft:#14223d;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans)}
+a{color:var(--accent)}
+code,.mono{font-family:var(--mono);font-size:.88em}
+code{background:var(--soft);padding:1px 5px;border-radius:4px}
+.app{display:grid;grid-template-columns:270px minmax(0,1fr);min-height:100vh}
+nav.side{position:sticky;top:0;height:100vh;overflow:auto;border-right:1px solid var(--line);background:var(--panel);padding:20px 14px;display:flex;flex-direction:column;gap:4px}
+.brand{font:700 15px/1.3 var(--mono);padding:4px 10px 14px}
+.brand small{display:block;font:500 12px var(--sans);color:var(--muted);margin-top:4px}
+.navbtn{all:unset;cursor:pointer;display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:8px;color:var(--ink)}
+.navbtn:hover{background:var(--soft)}
+.navbtn[aria-current="true"]{background:var(--accent-soft);color:var(--ink);box-shadow:inset 3px 0 0 var(--accent)}
+.navbtn:focus-visible{outline:2px solid var(--accent)}
+.navbtn .n{font:700 11px var(--mono);color:var(--accent);min-width:20px;padding-top:2px}
+.navbtn b{display:block;font-weight:600;font-size:14px}
+.navbtn span.d{display:block;color:var(--muted);font-size:12px;line-height:1.35}
+.side .foot{margin-top:auto;padding:14px 10px 0;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:8px}
+.themebtn{all:unset;cursor:pointer;border:1px solid var(--line);border-radius:6px;padding:5px 9px;font-size:12px;text-align:center}
+main{padding:26px 32px 40px;min-width:0}
+section.view{display:none}
+section.view.on{display:block}
+.eyebrow{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:26px;line-height:1.2;margin:4px 0 8px}
+h2{font-size:17px;margin:0 0 8px}
+.lead{color:var(--muted);max-width:900px;margin:0 0 18px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
+.grid2>*,.facts>*,.stack>*{min-width:0}
+.mxwrap{overflow-x:auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.frame{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.frame .bar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+.frame iframe{border:0;width:100%;height:calc(100vh - 210px);min-height:520px;background:var(--bg)}
+.stack{display:flex;flex-direction:column;gap:18px}
+.facts.wide{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;align-items:start}
+.facts{display:flex;flex-direction:column;gap:14px}
+.facts ul{margin:0;padding-left:18px}
+.facts li{margin:3px 0}
+.adr{display:flex;flex-wrap:wrap;gap:6px}
+.adr a{font:600 11px var(--mono);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:3px 9px;color:var(--ink);background:var(--soft)}
+.adr a:hover{border-color:var(--accent);color:var(--accent)}
+pre.tree{margin:0;font:12.5px/1.5 var(--mono);background:var(--soft);border-radius:8px;padding:12px;overflow:auto;white-space:pre}
+.tree .k{color:var(--accent);font-weight:600}
+.tree .c{color:var(--muted)}
+.pager{display:flex;justify-content:space-between;margin-top:18px;gap:10px}
+.pager button{all:unset;cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 14px;font-size:13px}
+.pager button:hover{border-color:var(--accent)}
+.pager button[disabled]{opacity:.35;cursor:default}
+.kbd{font:600 11px var(--mono);border:1px solid var(--line);border-radius:4px;padding:0 5px;background:var(--soft)}
+
+/* Matriz de fatias */
+.matrix{display:grid;grid-template-columns:190px repeat(5,minmax(115px,1fr));gap:8px;min-width:790px}
+.mh{font:700 12.5px var(--mono);padding:10px 8px;border-radius:8px;text-align:center;cursor:pointer;border:2px solid transparent}
+.mh small{display:block;font:500 11px var(--sans);opacity:.85}
+.mh.cat{background:var(--c-cat-soft);color:var(--c-cat)}
+.mh.circ{background:var(--c-circ-soft);color:var(--c-circ)}
+.mh.not{background:var(--c-not-soft);color:var(--c-not)}
+.mh.cfg{background:var(--c-cfg-soft);color:var(--c-cfg)}
+.mh.aud{background:var(--c-aud-soft);color:var(--c-aud)}
+.ml{font:600 12px var(--mono);display:flex;align-items:center;padding:8px 10px;border-radius:8px;background:var(--c-core-soft);color:var(--c-core);cursor:pointer;border:2px solid transparent}
+.ml.obs{background:var(--c-obs-soft);color:var(--c-obs)}
+.mc{all:unset;box-sizing:border-box;cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:8px 9px;font-size:11.5px;color:var(--muted);background:var(--panel);min-height:52px;transition:transform .12s,border-color .12s,opacity .12s}
+.mc b{display:block;color:var(--ink);font:600 11.5px var(--mono)}
+.mc:hover,.mc:focus-visible{border-color:var(--accent);transform:translateY(-1px);outline:none}
+.matrix.dim .mc,.matrix.dim .mh,.matrix.dim .ml{opacity:.28}
+.matrix.dim .hl{opacity:1!important;border-color:var(--accent)}
+.mc.sel{border-color:var(--accent)!important;box-shadow:0 0 0 2px var(--accent-soft)}
+.detail{min-height:180px}
+.detail h3{margin:0 0 6px;font-size:15px;font-family:var(--mono)}
+.detail .path{font:12px var(--mono);color:var(--muted);margin-bottom:8px}
+.cards3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px}
+.tile{all:unset;cursor:pointer;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:block}
+.tile:hover,.tile:focus-visible{border-color:var(--accent)}
+.tile .n{font:700 11px var(--mono);color:var(--accent)}
+.tile b{display:block;margin:2px 0 4px}
+.tile span{color:var(--muted);font-size:13px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* Fatia: explorador de arquivos */
+.files{display:flex;flex-direction:column;gap:6px}
+.file{all:unset;cursor:pointer;box-sizing:border-box;display:grid;grid-template-columns:210px 1fr;gap:10px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px}
+.file:hover,.file[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.file code{background:none;padding:0;font-weight:600}
+.file span{color:var(--muted)}
+.snippet{margin-top:10px}
+
+@media (max-width:1180px){.grid2{grid-template-columns:1fr}.cards3{grid-template-columns:1fr 1fr}}
+@media (max-width:760px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  nav.side{position:static;height:auto;flex-direction:row;overflow-x:auto;padding:10px 16px;border-right:0;border-bottom:1px solid var(--line)}
+  .brand,.side .foot,.navbtn span.d{display:none}
+  .navbtn{flex:none}
+  #nav{display:flex;gap:4px}
+  main{padding:18px 16px 32px}
+  .facts.wide{grid-template-columns:1fr}
+  h1{font-size:22px}
+  .cards3{grid-template-columns:1fr}
+  .frame iframe{height:70vh;min-height:420px}
+  .file{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<nav class="side" aria-label="Seções da arquitetura">
+  <div class="brand">Biblioteca Universitária<small>PoC AI-First · Node.js + TS + React · monólito modular com fatias verticais</small></div>
+  <div id="nav"></div>
+  <div class="foot">
+    <span>Navegue com <span class="kbd">←</span> <span class="kbd">→</span> ou pelo menu.</span>
+    <span>Fonte: <a href="architecture.md">architecture.md</a> · <a href="adr/README.md">ADRs</a> · <a href="../specs/README.md">Specs</a></span>
+    <button class="themebtn" id="theme" type="button">Alternar tema</button>
+  </div>
+</nav>
+<main id="main"></main>
+</div>
+
+<script>
+const ADR = {
+  "0001":"0001-registrar-decisoes",
+  "0002":"0002-login-da-universidade",
+  "0003":"0003-banco-postgresql",
+  "0004":"0004-aviso-por-sms",
+  "0005":"0005-busca-no-proprio-banco",
+  "0006":"0006-codigo-de-barras",
+  "0007":"0007-multa-em-tabela",
+  "0008":"0008-aviso-por-email",
+  "0009":"0009-monolito-modular-com-extracao-provada",
+  "0010":"0010-papeis-e-permissoes",
+  "0011":"0011-sessao-e-contexto-de-autenticacao",
+  "0012":"0012-auditoria-versus-telemetria",
+  "0013":"0013-captura-atomica-da-auditoria-no-mediador",
+  "0014":"0014-contrato-openapi-zod-e-rfc9457",
+  "0015":"0015-estrutura-do-modulo-fatias-verticais-hibridas",
+  "0016":"0016-fronteira-no-banco-schema-e-role-por-modulo",
+  "0017":"0017-distribuicao-de-dados-entre-schemas",
+  "0018":"0018-runner-de-migrations-especificado",
+  "0019":"0019-organizacao-das-specs-por-capacidade-e-historias",
+  "0020":"0020-paginacao-por-cursor-e-convencoes-da-api",
+  "0021":"0021-concorrencia-otimista-version-no-corpo",
+  "0022":"0022-acesso-a-dados-kysely-e-postgres-local",
+  "0023":"0023-integracoes-externas-acl-secretaria-e-conformista-calendario",
+  "0024":"0024-eventos-de-dominio-e-avisos-idempotentes",
+  "0025":"0025-objetos-de-valor-agregados-e-maquina-de-estados",
+  "0026":"0026-stack-nodejs-typescript-hono-e-ferramental",
+  "0027":"0027-frontend-react-tanstack-shadcn-e-msw",
+  "0028":"0028-disciplina-de-testes-criterios-e-mutacao-stryker",
+  "0029":"0029-fluxo-spec-kit-e-governanca-ai-first",
+  "0030":"0030-idioma-dos-identificadores-e-documentacao"
+};
+const esc = t => String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const adrLinks = ids => `<div class="adr">${ids.map(i=>`<a href="adr/${ADR[i]}.md" title="ADR-${i}">ADR-${i}</a>`).join("")}</div>`;
+
+/* ---------- Matriz módulos × camadas ---------- */
+const MODS = [
+  {id:"cat",name:"catalog",pkg:"@biblioteca/module-catalog",desc:"Subdomínio de suporte: catálogo bibliográfico de obras (Work)"},
+  {id:"circ",name:"circulation",pkg:"@biblioteca/module-circulation",desc:"Core Domain: exemplares físicos, empréstimos, devoluções, multas e fila FIFO de reservas"},
+  {id:"not",name:"notices",pkg:"@biblioteca/module-notices",desc:"Subdomínio de suporte: despacho idempotente de avisos por e-mail após COMMIT"},
+  {id:"cfg",name:"config",pkg:"@biblioteca/module-config",desc:"Subdomínio genérico feito em casa: tabela configurável do valor diário da multa"},
+  {id:"aud",name:"audit",pkg:"@biblioteca/module-audit",desc:"Subdomínio genérico feito em casa: consulta somente leitura da trilha audit.events"}
+];
+const LAYERS = [
+  {id:"authn",name:"Autenticação & Sessão",kind:"core",info:"DatabaseAuthenticator lê auth.accounts e auth.sessions (role mod_auth); cookie httpOnly lib_sid + CSRF token e cabeçalho dev opcional.",adr:["0002","0011"]},
+  {id:"authz",name:"Autorização (Mediador)",kind:"core",info:"Toda chamada send() confere principal !== null e allowedRoles ('librarian' ou 'student'); negativa grava authz.denied em transação à parte.",adr:["0010","0013"]},
+  {id:"contract",name:"Contrato & RFC 9457",kind:"core",info:"OpenAPI 3.1.1 espelhado em @biblioteca/contract (schemas Zod estritos, cursor opaco e ProblemError RFC 9457).",adr:["0014","0020"]},
+  {id:"slices",name:"slices/ (casos de uso)",kind:"mod",info:"Cada caso de uso fica numa pasta própria com endpoint.ts (HTTP + Zod) e handler.ts (prepare/handle ou readOnly), testado pelo mediador.",adr:["0015","0019"]},
+  {id:"domain",name:"domain/ + infrastructure/",kind:"mod",info:"VOs, agregados, máquina de estados e portas puras em domain/; Kysely PostgreSQL/PGlite e fakes InMemory* em infrastructure/.",adr:["0015","0022","0025"]},
+  {id:"public",name:"public/ (fachada e eventos)",kind:"mod",info:"Única superfície importável por outros módulos: fachadas in-process/HTTP, DTOs internos, portas compartilhadas e evento CopyReturned v1.",adr:["0009","0015","0024"]},
+  {id:"db",name:"Schema + role (PG 18)",kind:"mod",info:"Cada módulo só tem GRANT no próprio schema via set_config('search_path',...) e set_config('role',...). Login app é LOGIN NOINHERIT.",adr:["0003","0016","0017"]},
+  {id:"audit",name:"Auditoria atômica",kind:"core",info:"Mediator grava intenção + eventos emit() em audit.events no mesmo COMMIT do negócio; todo módulo tem apenas INSERT em audit.events.",adr:["0012","0013"]},
+  {id:"edges",name:"Bordas externas & qualidade",kind:"obs",info:"Secretaria entra por ACL (discente -> AcademicStudent); Calendário por Conformista; dependency-cruiser e Stryker ≥ 80% no CI.",adr:["0023","0028","0029"]}
+];
+const CELL = {
+  cat:{
+    authn:["lib_sid + X-CSRF-Token","GET e mutações exigem sessão autenticada (cookie ou Bearer)."],
+    authz:["librarian cria/edita · leitura autenticada","allowedRoles: ['librarian', 'student'] nas consultas; ['librarian'] em POST/PATCH."],
+    contract:["CreateWork / UpdateWork / WorkPageDto","Paginação opaca por cursor (limit, nextCursor) e version no PATCH."],
+    slices:["create-work · update-work · get-work · search-works","4 fatias; search-works roda ILIKE no próprio banco (≤ 1 s, ADR-0005)."],
+    domain:["Work · Isbn · WorkTitle · WorkRepository","Normaliza ISBN-10/13 com dígito verificador e dedup de autores."],
+    public:["CatalogFacade · CatalogHttpClient","Substituível por HTTP em /internal/v1/catalog/* quando CATALOG_ADAPTER=http."],
+    db:["schema catalog · role mod_catalog","Tabela catalog.works com controle otimista por version."],
+    audit:["work.created · work.updated","Mudança de título, autores, assunto e ISBN no mesmo COMMIT."],
+    edges:["Exporta resumo para circulation via public/","Sem dependência de infraestrutura externa."]
+  },
+  circ:{
+    authn:["lib_sid obrigatório + X-CSRF-Token","Aluno consulta seus dados; bibliotecária opera o balcão."],
+    authz:["librarian no balcão · student em resumo/reserva","placeHold checa student; getStudentSummary exige mesmo student ou librarian."],
+    contract:["Lend/Return/Renew/Hold/Fine schemas + 409","Erros tipados: pending-fine, loan-limit-reached, invalid-copy-state, version-conflict."],
+    slices:["12 fatias (register, retire, list, lend, return, renew, place-hold, withdraw, expire, pay-fine, availability, summary)","Fluxo canônico ilustrado nos diagramas 03 e 04."],
+    domain:["Student · Copy · Loan · Fine · Hold · computeDueDate","Até 3 empréstimos (RN-02), multa bloqueia (RN-01), 14 dias letivos (RN-05), FIFO + 3 dias (RN-07)."],
+    public:["CirculationDeps · ClockPort · AcademicRegistry · Calendar","Expõe adaptadores ACL/Conformista usados na composição e contratos de ports."],
+    db:["schema circulation · role mod_circulation","5 tabelas sem FK cruzada para catalog.works (somente work_id UUID)."],
+    audit:["loan.created · copy.returned · fine.paid · hold.*","Toda transição física ou financeira gravada junto no COMMIT (inclui copy.registered/retired, loan.renewed)."],
+    edges:["ACL Secretaria + Conformista Calendário","translateAcademicStudent converte discente/sit_matricula; ConformistCalendarClient lê dias_letivos."]
+  },
+  not:{
+    authn:["lib_sid em GET /api/v1/notices","Consulta restrita ao próprio aluno ou à bibliotecária."],
+    authz:["librarian vê tudo · student vê próprios avisos","Escopo validado no mediador antes da query por cursor."],
+    contract:["ListNoticesQuery · NoticePageDto · CopyReturnedEventV1","Contrato versionado de evento pós-COMMIT (ADR-0024)."],
+    slices:["dispatch-notice · list-notices","Consome CopyReturned v1 em transação própria e lista avisos paginados por cursor."],
+    domain:["NoticeDispatch · NoticeRepository · EmailSenderPort","Chave res-<holdId> impede duplicação em reprocessamento."],
+    public:["NoticesFacade (handleCopyReturned)","Disparada pelo hook afterCommit da devolução em transação própria."],
+    db:["schema notices · role mod_notices","Tabela notices.dispatches com UNIQUE(idempotency_key)."],
+    audit:["notice.sent","Gravado na transação própria do módulo de avisos pós-COMMIT."],
+    edges:["Porta EmailSenderPort","SMTP local ou InMemoryEmailSender nos testes; desacoplado de circulação."]
+  },
+  cfg:{
+    authn:["lib_sid + X-CSRF-Token","GET leitura autenticada; PATCH restrito ao perfil gestor."],
+    authz:["librarian e student em get · librarian em update","GET permitido a ambos os perfis; PATCH /api/v1/config/fine-rate restrito à bibliotecária (spec 005, ADR-0007)."],
+    contract:["FineRateConfigDto · UpdateFineRateRequest (version)","Retorna 409 version-conflict quando version diverge (ADR-0021)."],
+    slices:["get-fine-rate · update-fine-rate","Lida no prepare() de return-copy fora da transação de circulação."],
+    domain:["FineRate · FineRateRepository","Padrão seed: 100 centavos/dia (R$ 1,00); valida faixa inteira 1..100000."],
+    public:["FineRateFacade (currentDailyRateCents)","Consumida por circulation sem importar repository de config."],
+    db:["schema config · role mod_config","Tabela config.fine_rates com version otimista."],
+    audit:["fine_rate.updated (antes e depois)","Registra valor anterior e novo conforme ADR-0007."],
+    edges:["Sem dependência externa","Alteração passa a valer para novas devoluções sem alterar multas já quitadas."]
+  },
+  aud:{
+    authn:["lib_sid obrigatório","Consulta administrativa autenticada."],
+    authz:["Apenas librarian · escopo AUDIT_READ_SCOPE","Mediador aplica role audit_reader somente na leitura audit.events."],
+    contract:["ListAuditEventsQuery · AuditEventPageDto","Filtros por action, resourceType, actorId, período e cursor."],
+    slices:["list-audit-events","Fatia readOnly com leitura filtrada ordenada por id DESC (UUIDv7)."],
+    domain:["AuditQueryCriteria · AuditReader","Sem tabela mutável própria: módulo apenas lê a trilha gravada pelo núcleo."],
+    public:["Sem fachada pública · apenas ./module","Exporta registerAuditModule para a composição; outros módulos não consultam auditoria."],
+    db:["schema audit · SELECT apenas para audit_reader","Módulos possuem só INSERT; nem mod_audit nem mod_circulation fazem UPDATE/DELETE."],
+    audit:["Trilha imutável","authz.denied gravada fora da tx negada; eventos de negócio dentro do COMMIT."],
+    edges:["ADR-0012 (auditoria × telemetria)","Logs técnicos nunca entram em audit.events; apenas fatos de negócio e segurança."]
+  }
+};
+
+function matrixHTML(){
+  let h = `<div class="mxwrap"><div class="matrix" id="mx"><div></div>`;
+  for(const m of MODS) h += `<div class="mh ${m.id}" data-mod="${m.id}" tabindex="0" title="${esc(m.desc)}">modules/${m.name}<small>${m.pkg}</small></div>`;
+  for(const l of LAYERS){
+    h += `<div class="ml ${l.kind==='obs'?'obs':''}" data-layer="${l.id}" tabindex="0" style="${l.kind==='mod'?'background:var(--soft);color:var(--ink)':''}">${l.name}</div>`;
+    for(const m of MODS){
+      const [t] = CELL[m.id][l.id];
+      h += `<button class="mc" type="button" data-mod="${m.id}" data-layer="${l.id}"><b>${esc(t.length>32?t.slice(0,30)+"…":t)}</b><span>${l.kind==='mod'?'dentro do módulo':'núcleo transversal'}</span></button>`;
+    }
+  }
+  return h + `</div></div>`;
+}
+function bindMatrix(root){
+  const mx = root.querySelector("#mx"), det = root.querySelector("#detail");
+  const clear = () => {mx.classList.remove("dim");mx.querySelectorAll(".hl").forEach(e=>e.classList.remove("hl"));};
+  const hl = sel => {clear();mx.classList.add("dim");mx.querySelectorAll(sel).forEach(e=>e.classList.add("hl"));};
+  mx.querySelectorAll(".mc").forEach(c=>c.addEventListener("click",()=>{
+    mx.querySelectorAll(".mc.sel").forEach(e=>e.classList.remove("sel")); c.classList.add("sel");
+    const m = MODS.find(x=>x.id===c.dataset.mod), l = LAYERS.find(x=>x.id===c.dataset.layer), [t,d] = CELL[m.id][l.id];
+    det.innerHTML = `<div class="eyebrow">${l.kind==='mod'?'Fatia vertical':'Camada transversal'} · ${l.name}</div>
+      <h3>modules/${m.name}</h3><div class="path">${esc(t)}</div><p style="margin:0 0 8px">${esc(d)}</p>
+      <p style="margin:0 0 10px;color:var(--muted);font-size:13px">${l.info}</p>${adrLinks(l.adr)}`;
+  }));
+  mx.querySelectorAll(".mh").forEach(e=>{
+    const f=()=>{hl(`[data-mod="${e.dataset.mod}"]`);const m=MODS.find(x=>x.id===e.dataset.mod);
+      det.innerHTML=`<div class="eyebrow">Coluna vertical · módulo</div><h3>modules/${m.name}</h3><div class="path">${m.pkg}</div><p style="margin:0">${esc(m.desc)}. A coluna inteira é o módulo: da fatia HTTP ao schema no banco, passando pelas camadas transversais do núcleo.</p>`;};
+    e.addEventListener("click",f);e.addEventListener("keydown",ev=>{if(ev.key==="Enter")f();});
+  });
+  mx.querySelectorAll(".ml").forEach(e=>{
+    const f=()=>{hl(`[data-layer="${e.dataset.layer}"]`);const l=LAYERS.find(x=>x.id===e.dataset.layer);
+      det.innerHTML=`<div class="eyebrow">${l.kind==='mod'?'Estrutura padrão em todo módulo':'Linha horizontal · packages/core'}</div><h3>${l.name}</h3><p style="margin:0 0 10px">${l.info}</p>${adrLinks(l.adr)}`;};
+    e.addEventListener("click",f);e.addEventListener("keydown",ev=>{if(ev.key==="Enter")f();});
+  });
+  mx.addEventListener("dblclick",clear);
+  root.querySelector("#mxreset").addEventListener("click",clear);
+}
+
+/* ---------- Explorador de arquivos de uma fatia real ---------- */
+const FILES = [
+  ["slices/return-copy/endpoint.ts","presentation","Valida ReturnCopyRequestSchema (@biblioteca/contract) com parseInput e despacha ao Mediador com principal e requestId.",
+   `app.post("/api/v1/circulation/returns", async (c) => {\n  const body = parseInput(ReturnCopyRequestSchema, await readJsonBody(c));\n  const result: ReturnCopyResultDto = await mediator.send(handler, body, {\n    principal: principalOf(c),\n    requestId: c.get("requestId"),\n  });\n  return c.json(result);\n});`],
+  ["slices/return-copy/handler.ts","application · prepare/handle","Lê multa vigente e obra em prepare() fora da tx; em handle() fecha empréstimo, calcula multa, promove fila FIFO e agenda CopyReturned v1 em afterCommit().",
+   `prepare: async ({ input, read }) => {\n  const dailyRateCents = await deps.config.currentDailyRateCents();\n  const copy = await read(CIRCULATION_SCOPE, (trx) => repositoryFor(trx).findCopyByBarcode(barcode));\n  const work = await deps.catalog.getWork(copy.workId);\n  return { dailyRateCents, workTitle: work?.title ?? "Obra não identificada" };\n},\nhandle: async ({ input, trx, emit, afterCommit, prepared }) => {\n  const closedLoan = Loan.reconstitute(openLoan).close(todayYmd);\n  const waitingHold = await repo.findNextWaitingHoldFifo(copyProps.workId);\n  const updatedCopy = Copy.reconstitute(copyProps).returnToPool(Boolean(waitingHold), nowIso);\n  if (waitingHold) afterCommit(() => deps.notices.handleCopyReturned(event));\n  emit({ action: "copy.returned", resourceType: "copy", resourceId: savedCopy.id });\n}`],
+  ["domain/copy.ts","domínio puro","Entidade Copy sem dependência de Kysely ou HTTP: maquina estados available -> on-loan -> reserved -> retired e incrementa version.",
+   `returnToPool(hasWaitingHold: boolean, nowIso: string): Copy {\n  if (this.#props.status !== "on-loan") {\n    throw new ProblemError("no-active-loan", { detail: \`Exemplar \${this.#props.barcode}...\` });\n  }\n  return new Copy({\n    ...this.#props,\n    status: hasWaitingHold ? "reserved" : "available",\n    version: this.#props.version + 1,\n    updatedAt: nowIso,\n  });\n}`],
+  ["slices/list-copies/handler.ts","leitura · readOnly","Fatia de leitura não abre transação de escrita: usa readOnly: true, consulta por cursor opaco em infrastructure/ e enriquece títulos via CatalogFacade.",
+   `readOnly: true,\nallowedRoles: ["librarian", "student"],\nprepare: async ({ input, read }) => {\n  const page = await read(CIRCULATION_SCOPE, (trx) => repositoryFor(trx).listCopies(input));\n  const works = await deps.catalog.getWorksByIds(page.items.map((c) => c.workId));\n  return { page, titles };\n}`],
+  ["slices/circulation-slices.test.ts","testes de fatia","Vitest + createInMemoryMediator + fakes InMemory* validam os critérios [n.n], papéis, conflitos de versão e mutação no Stryker.",
+   `const { mediator } = createInMemoryMediator();\nawait expect(mediator.send(returnHandler, { barcode }, { principal: aPrincipal({ role: "student" }) }))\n  .rejects.toMatchObject({ status: 403, type: ".../forbidden" });`]
+];
+function filesHTML(){
+  return `<div class="files" id="files">${FILES.map((f,i)=>`<button class="file" type="button" data-i="${i}" aria-pressed="${i===0}"><code>${f[0]}</code><span>${f[1]}</span></button>`).join("")}</div>
+  <div class="snippet" id="snip"></div>`;
+}
+function bindFiles(root){
+  const snip = root.querySelector("#snip");
+  const show = i => { root.querySelectorAll(".file").forEach(b=>b.setAttribute("aria-pressed", b.dataset.i==i));
+    const f = FILES[i]; snip.innerHTML = `<p style="margin:0 0 8px;font-size:13px">${f[2]}</p><pre class="tree">${f[3].replace(/</g,"&lt;")}</pre><div style="font-size:11px;color:var(--muted);margin-top:4px">trecho real implementado em <code>packages/modules/circulation/${f[0]}</code></div>`; };
+  root.querySelectorAll(".file").forEach(b=>b.addEventListener("click",()=>show(b.dataset.i)));
+  show(0);
+}
+
+/* ---------- Seções ---------- */
+const SECTIONS = [
+ {id:"inicio",title:"Mapa: módulos × camadas",short:"Matriz interativa das fatias verticais",custom:true},
+ {id:"visao-geral",file:"01-visao-geral",title:"Visão geral do sistema",short:"React · API Hono · PG · bordas",
+  lead:"O que roda e como se fala na PoC da Biblioteca Universitária. Uma stack única (Node.js 22 + Hono no backend e React 19 no frontend), com fronteiras explícitas para Secretaria (ACL), Calendário (Conformista) e Serviço de E-mail pós-COMMIT.",
+  facts:[["Pontos-chave",["<code>apps/api-node</code> sobe por padrão como monólito modular com <code>MODULES=*</code>.","<code>apps/web-react</code> consome <code>/api/v1/*</code> com sessão em cookie <code>lib_sid</code> + anti-CSRF e modo MSW.","Secretaria entra traduzida via ACL; Calendário em modo Conformista; e-mail idempotente após <code>COMMIT</code>."]]],
+  adr:["0002","0008","0009","0011","0023","0024","0026","0027"]},
+ {id:"monorepo",file:"02-monorepo",title:"Monorepo modular",short:"apps · packages · contracts · specs",
+  lead:"Um repositório, várias unidades com dependência em um só sentido: apps montam, módulos implementam, o núcleo é transversal e o contrato OpenAPI + SQL são a fonte de verdade.",
+  tree:`<span class="k">contracts/</span>   openapi/openapi.yaml · db/migrations/0001..0006.sql
+<span class="k">apps/</span>        api-node/ (Hono + composição) · web-react/ (React 19 + Vite)
+<span class="k">packages/</span>    core/ (mediador · UoW · auth · RFC 9457 · cursor)
+             contract/ (@biblioteca/contract · Zod espelho da OpenAPI)
+             modules/{catalog,circulation,notices,config,audit}/
+<span class="k">specs/</span>       001..005-* (capacidades -> histórias por caso de uso -> [n.n])
+<span class="k">tools/</span>       docs-check/ (links Markdown + regras Mermaid)
+<span class="k">docs/</span>        architecture.md · architecture.html · adr/0001..0030
+AGENTS.md · CLAUDE.md · .dependency-cruiser.cjs · stryker.config.mjs`,
+  facts:[["Regras de dependência",["<code>apps -> modules -> core</code>; <code>packages/core</code> nunca importa módulos.","Módulo ↔ módulo apenas via <code>public/</code>, bloqueado por <code>dependency-cruiser</code> e <code>exports</code>.","Spec primeiro (SDD): critérios <code>[n.n]</code> dirigem fatias e testes (Stryker ≥ 80%)."]]],
+  adr:["0009","0014","0015","0019","0028","0029"]},
+ {id:"fatias",file:"03-modulo-fatias",title:"Dentro de um módulo",short:"Fatias verticais híbridas",
+  lead:"Cada caso de uso é uma fatia completa dentro de slices/ (endpoint.ts + handler.ts). O domínio puro e os repositórios Kysely/InMemory ficam em domain/ e infrastructure/, compartilhados entre as fatias do módulo.",
+  tree:`<span class="k">modules/circulation/</span>    <span class="c">@biblioteca/module-circulation</span>
+├─ <span class="k">public/</span>             <span class="c">única porta: tipos compartilhados, ACL/Cal, CopyReturned v1</span>
+├─ <span class="k">domain/</span>             <span class="c">Copy · Loan · Fine · Hold · Student · ports.ts · value-objects</span>
+├─ <span class="k">infrastructure/</span>     <span class="c">kysely-circulation-repo · academic-translator · calendar-client</span>
+├─ <span class="k">slices/</span>
+│  ├─ return-copy/      <span class="c">endpoint.ts · handler.ts</span>
+│  ├─ list-copies/      <span class="c">endpoint.ts · handler.ts (readOnly + cursor)</span>
+│  ├─ lend-copy/ …      <span class="c">+ mais 9 fatias verticais</span>
+│  └─ circulation-slices.test.ts
+└─ <span class="k">module.ts</span>           <span class="c">registerCirculationModule(app, mediator, deps)</span>`,
+  files:true,
+  adr:["0015","0022","0023","0025","0028"]},
+ {id:"mediador",file:"04-pipeline-mediador",title:"Pipeline do mediador",short:"Devolução de exemplar passo a passo",
+  lead:"Todo caso de uso passa pelo mediador em packages/core. Em return-copy, o preparo lê multa e obra fora da transação; dentro do COMMIT acontecem fechamento, multa, promoção da reserva e auditoria; e o aviso segue após o COMMIT.",
+  facts:[["Fases do pipeline",["<b>Autorização</b> — exige papel <code>librarian</code>; negativa audita <code>authz.denied</code> em tx separada.","<b>Preparo (fora da tx)</b> — <code>ConfigFacade</code> e <code>CatalogFacade</code> evitam locks cruzados.","<b>Unidade de Trabalho</b> — <code>BEGIN</code> + <code>set_config(circulation, mod_circulation)</code>.","<b>Auditoria + pós-commit</b> — <code>copy.returned</code> no COMMIT; <code>CopyReturned v1</code> chama <code>NoticesFacade</code>."]],
+         ["Respostas de erro",["403 <code>forbidden</code> quando aluno tenta operar o balcão.","409 <code>version-conflict</code> ou <code>no-active-loan</code> (RFC 9457)."]]],
+  adr:["0007","0010","0013","0021","0024"]},
+ {id:"banco",file:"05-fronteira-banco",title:"Fronteira no banco",short:"Schemas e roles no PostgreSQL 18 / PGlite",
+  lead:"A fronteira do módulo também existe no PostgreSQL: cada módulo veste uma role NOLOGIN e só enxerga seu próprio schema, então qualquer vazamento falha no banco — provado em teste real com PGlite.",
+  table:true,
+  adr:["0003","0016","0017","0018","0022"]},
+ {id:"extracao",file:"06-extracao-e-integracoes",title:"Prova de extração",short:"MODULES=* → módulo separado + ACL",
+  lead:"Mesma base de código, composição seletiva via MODULES=…. O módulo Circulação troca CatalogFacade in-process por CatalogHttpClient sem alterar o domínio nem o frontend React; Secretaria (ACL) e Calendário (Conformista) seguem isolados.",
+  tree:`<span class="c"># monólito modular (padrão)</span>
+MODULES=*                                  <span class="c"># catálogo, circulação, avisos, config, audit</span>
+
+<span class="c"># perfil separado (split.accept.test.ts)</span>
+processo-acervo:  MODULES=catalog          <span class="c"># expõe /api/v1/catalog/* e /internal/v1/catalog/*</span>
+processo-balcao:  MODULES=circulation,notices,config,audit
+                  CATALOG_ADAPTER=http     <span class="c"># usa CatalogHttpClient com token de serviço</span>`,
+  facts:[["Por que extrai sem reescrever",["<code>CatalogFacade</code> é interface assíncrona desde o dia 1; <code>apps/api-node/src/split.accept.test.ts</code> prova o modo split.","<code>circulation.copies</code> e <code>circulation.holds</code> guardam só <code>work_id</code> UUID, sem FK para <code>catalog.works</code>."]],
+         ["Fronteiras externas",["<code>translateAcademicStudent</code> traduz <code>discente/sit_matricula</code> da Secretaria para <code>AcademicStudent</code> (ACL).","<code>ConformistCalendarClient</code> consome <code>dias_letivos</code> diretamente no prazo de 14 dias."]]],
+  adr:["0009","0016","0017","0023","0026"]},
+ {id:"codigo",file:"07-codigo-por-contexto",title:"O código por contexto",short:"Pastas, classes, fatias e DDD tático",page:true,
+  lead:"Como o código se organiza em cada contexto delimitado. Os dois cortes (o módulo e a fatia), as pastas e as classes de cada módulo, quem chama quem entre contextos e o agregado Student, com os conceitos do treinamento conferidos no código.",
+  facts:[["O que a página mostra",["<b>Os dois cortes</b>: contexto = módulo = pacote = schema + role; fatia = um caso de uso dentro do módulo.","<b>Dentro de cada contexto</b>: as pastas <code>public/</code>, <code>domain/</code>, <code>infrastructure/</code> e <code>slices/</code>, com as classes de cada uma.","<b>O agregado <code>Student</code></b>: o que passa pela raiz e o que ainda muda por fora dela.","<b>Os conceitos do treinamento</b> (entidade, objeto de valor, agregado, invariante, regra de dependência) lado a lado com o código."]],
+         ["Como ler as etiquetas",["<b>código</b>: está no repositório.","<b>confere</b>, <b>parcial</b> e <b>diverge</b>: como o código fica diante do conceito, do treinamento ou da ADR.","<b>só no desenho</b>: existe só no material do treinamento."]]],
+  adr:["0015","0016","0021","0023","0024","0025"]}
+];
+
+const DBTABLE = `<table style="width:100%;border-collapse:collapse;font-size:12.5px">
+<tr style="text-align:left;color:var(--muted)"><th>Schema</th><th>Role NOLOGIN</th><th>Tabelas / Regra</th></tr>
+${[
+  ["auth","mod_auth","accounts, sessions (sessões lib_sid + CSRF)"],
+  ["catalog","mod_catalog","works (busca textual ≤ 1 s e ISBN)"],
+  ["circulation","mod_circulation","students, copies, loans, fines, holds (sem FK cruzada)"],
+  ["notices","mod_notices","dispatches (UNIQUE idempotency_key)"],
+  ["config","mod_config","fine_rates (ADR-0007, version otimista)"],
+  ["audit.events","INSERT todos · SELECT audit_reader","trilha append-only sem UPDATE/DELETE"],
+  ["meta.schema_migrations","app / migrator","0001..0006 UTF-8 + pg_advisory_lock + SHA-256"]
+].map(r=>`<tr style="border-top:1px solid var(--line)">${r.map(c=>`<td style="padding:6px 4px"><code>${c}</code></td>`).join("")}</tr>`).join("")}</table>`;
+
+function sectionHTML(s,i){
+  const pager = `<div class="pager"><button type="button" data-go="${i-1}" ${i===0?"disabled":""}>← ${i>0?SECTIONS[i-1].title:""}</button><button type="button" data-go="${i+1}" ${i===SECTIONS.length-1?"disabled":""}>${i<SECTIONS.length-1?SECTIONS[i+1].title:""} →</button></div>`;
+  if(s.custom){
+    return `<section class="view" id="v-${s.id}" data-i="${i}">
+      <div class="eyebrow">Monólito modular · fatias verticais</div><h1>Módulos são colunas; o núcleo atravessa todos</h1>
+      <p class="lead">Cada módulo de negócio (Acervo, Circulação, Avisos, Config e Auditoria) é uma coluna vertical com a mesma estrutura interna, cortada pelas camadas transversais de <code>packages/core</code>. Clique numa célula para ver o que ela contém, num cabeçalho de módulo para isolar a coluna ou numa camada para isolar a linha.</p>
+      <div class="grid2">
+        <div class="card">${matrixHTML()}
+          <div class="legend"><span><i style="background:var(--c-core)"></i>núcleo transversal (packages/core)</span><span><i style="background:var(--line)"></i>estrutura de cada módulo</span><span><i style="background:var(--c-obs)"></i>bordas &amp; qualidade</span><button class="themebtn" id="mxreset" type="button" style="margin-left:auto">Limpar destaque</button></div>
+        </div>
+        <div class="facts"><div class="card detail" id="detail"><div class="eyebrow">Detalhe</div><p style="color:var(--muted);margin:6px 0 0">Selecione uma célula, um módulo ou uma camada.</p></div>
+          <div class="card"><h2>Como ler</h2><ul class="facts" style="display:block"><li>Uma <b>fatia</b> = um caso de uso dentro de uma coluna.</li><li>Atravessar uma coluna para outra só por <code>public/</code>.</li><li>Linhas vermelhas são comportamentos do mediador, iguais para todo caso de uso.</li></ul></div>
+        </div>
+      </div>
+      <h2 style="margin-top:22px">Subdiagramas</h2>
+      <div class="cards3">${SECTIONS.slice(1).map((x,j)=>`<button class="tile" type="button" data-go="${j+1}"><span class="n">${String(j+1).padStart(2,"0")}</span><b>${x.title}</b><span>${x.lead.split(". ")[0]}.</span></button>`).join("")}</div>
+      ${pager}</section>`;
+  }
+  const side = [
+    s.tree?`<div class="card"><h2>Estrutura</h2><pre class="tree">${s.tree}</pre></div>`:"",
+    s.files?`<div class="card"><h2>Arquivos reais de uma fatia</h2>${filesHTML()}</div>`:"",
+    s.table?`<div class="card"><h2>Mapa schema → role</h2>${DBTABLE}</div>`:"",
+    ...(s.facts||[]).map(([t,items])=>`<div class="card"><h2>${t}</h2><ul>${items.map(x=>`<li>${x}</li>`).join("")}</ul></div>`),
+    `<div class="card"><h2>Decisões</h2>${adrLinks(s.adr)}</div>`
+  ].join("");
+  return `<section class="view" id="v-${s.id}" data-i="${i}">
+    <div class="eyebrow">Subdiagrama ${String(i).padStart(2,"0")} de ${SECTIONS.length-1}</div><h1>${s.title}</h1><p class="lead">${s.lead}</p>
+    <div class="stack">
+      <div class="frame"><div class="bar"><span>${s.page?"Página de leitura: role dentro do quadro ou abra em tela cheia":`Interativo: arraste, zoom, busca (<kbd class="kbd">/</kbd>), visões guiadas, Route Probe (<kbd class="kbd">R</kbd>), estilos (<kbd class="kbd">S</kbd>) e foco por clique`}</span><a href="architecture/${s.file}.html" target="_blank" rel="noopener">abrir em tela cheia ↗</a></div>
+        <iframe data-src="architecture/${s.file}.html?hub=1" title="${s.title}" loading="lazy"></iframe></div>
+      <div class="facts wide">${side}</div>
+    </div>${pager}</section>`;
+}
+
+const main = document.getElementById("main"), nav = document.getElementById("nav");
+main.innerHTML = SECTIONS.map(sectionHTML).join("");
+nav.innerHTML = SECTIONS.map((s,i)=>`<button class="navbtn" type="button" data-go="${i}"><span class="n">${i===0?"◆":String(i).padStart(2,"0")}</span><span><b>${s.title}</b><span class="d">${s.short}</span></span></button>`).join("");
+bindMatrix(document.getElementById("v-inicio"));
+bindFiles(document.getElementById("v-fatias"));
+
+let cur = -1;
+function go(i, push=true){
+  i = Math.max(0, Math.min(SECTIONS.length-1, +i));
+  if(i===cur) return; cur = i;
+  document.querySelectorAll("section.view").forEach(v=>v.classList.toggle("on", +v.dataset.i===i));
+  nav.querySelectorAll(".navbtn").forEach(b=>b.setAttribute("aria-current", +b.dataset.go===i));
+  const fr = document.querySelector(`#v-${SECTIONS[i].id} iframe`);
+  if(fr && !fr.src) fr.src = fr.dataset.src;
+  if(push) history.replaceState(null,"","#"+SECTIONS[i].id);
+  window.scrollTo({top:0});
+}
+document.addEventListener("click", e=>{ const b = e.target.closest("[data-go]"); if(b && !b.disabled) go(b.dataset.go); });
+document.addEventListener("keydown", e=>{
+  if(e.target.closest("input,textarea")) return;
+  if(e.key==="ArrowRight") go(cur+1); if(e.key==="ArrowLeft") go(cur-1);
+});
+window.addEventListener("hashchange", ()=>{ const j = SECTIONS.findIndex(s=>"#"+s.id===location.hash); if(j>=0) go(j,false); });
+go(Math.max(0, SECTIONS.findIndex(s=>"#"+s.id===location.hash)), false);
+
+const root = document.documentElement;
+document.getElementById("theme").addEventListener("click", ()=>{
+  const dark = root.dataset.theme ? root.dataset.theme==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+});
+</script>
+</body>
+</html>

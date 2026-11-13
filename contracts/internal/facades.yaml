@@ -1,0 +1,135 @@
+openapi: 3.1.1
+info:
+  title: Biblioteca Universitária — Fachadas internas (modo separado)
+  version: 0.1.0
+  summary: Contrato interno entre processos quando um módulo é extraído (ADR-0009, ADR-0015).
+  description: |
+    Usado pelo `CatalogHttpClient` quando a aplicação sobe no modo separado (`MODULES=catalog` num
+    processo e `MODULES=circulation,notices,config,audit` + `CATALOG_ADAPTER=http` noutro).
+    Fora da rede interna, rotas `/internal/v1/*` exigem token de serviço.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: http://localhost:3001
+    description: Processo do módulo Acervo no modo separado
+tags:
+  - name: catalog-internal
+    description: Fachada interna do módulo Acervo (`CatalogFacade`)
+security:
+  - serviceAuth: []
+paths:
+  /internal/v1/catalog/works/{workId}:
+    get:
+      operationId: internalGetWorkSummary
+      tags: [catalog-internal]
+      summary: Consulta resumo de uma obra (`CatalogFacade.getWork`)
+      parameters:
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Resumo da obra ou `null` quando não existir.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalWorkResult'
+        '401':
+          $ref: ../openapi/components/common.yaml#/responses/Unauthenticated
+        '500':
+          $ref: ../openapi/components/common.yaml#/responses/InternalError
+  /internal/v1/catalog/works/batch:
+    post:
+      operationId: internalBatchGetWorks
+      tags: [catalog-internal]
+      summary: Consulta lote de resumos de obras por ids (`CatalogFacade.getWorksByIds`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchWorksRequest'
+      responses:
+        '200':
+          description: Resumos encontrados (pode conter menos itens que a lista recebida).
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchWorksResult'
+        '400':
+          $ref: ../openapi/components/common.yaml#/responses/ValidationError
+        '401':
+          $ref: ../openapi/components/common.yaml#/responses/Unauthenticated
+        '500':
+          $ref: ../openapi/components/common.yaml#/responses/InternalError
+components:
+  securitySchemes:
+    serviceAuth:
+      type: http
+      scheme: bearer
+      description: Token de serviço compartilhado entre processos no modo separado.
+  headers:
+    CacheControl:
+      description: Sempre `no-store` nas chamadas internas entre processos.
+      schema:
+        type: string
+        enum: [no-store]
+  schemas:
+    InternalWorkSummary:
+      type: object
+      additionalProperties: false
+      required: [id, title, authors, subject, isbn]
+      properties:
+        id:
+          $ref: ../openapi/components/schemas.yaml#/Id
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        subject:
+          type: string
+        isbn:
+          oneOf:
+            - type: string
+            - type: 'null'
+    InternalWorkResult:
+      type: object
+      additionalProperties: false
+      required: [work]
+      properties:
+        work:
+          oneOf:
+            - $ref: '#/components/schemas/InternalWorkSummary'
+            - type: 'null'
+    BatchWorksRequest:
+      type: object
+      additionalProperties: false
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+    BatchWorksResult:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InternalWorkSummary'

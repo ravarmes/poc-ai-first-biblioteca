@@ -1,0 +1,228 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Fronteira no banco — schema e role por módulo",
+    "output": "05-fronteira-banco.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "modules",
+        "label": "Isolamento dos módulos",
+        "focus": ["m_cat", "r_cat", "s_cat", "m_circ", "r_circ", "s_circ", "m_not", "r_not", "s_not", "m_cfg", "r_cfg", "s_cfg"],
+        "note": "Cada módulo veste apenas sua role NOLOGIN e só tem GRANT no próprio schema."
+      },
+      {
+        "id": "auth",
+        "label": "Sessões em auth",
+        "focus": ["m_auth", "r_auth", "s_auth"],
+        "note": "Contas e sessões com cookie lib_sid + CSRF ficam isoladas no schema auth."
+      },
+      {
+        "id": "audit",
+        "label": "Auditoria append-only",
+        "focus": ["a_beh", "s_audit", "r_reader"],
+        "note": "Módulos têm INSERT em audit.events na mesma transação; apenas audit_reader faz SELECT."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "m_cat",
+      "type": "backend",
+      "label": "modules/catalog",
+      "sublabel": "Acervo",
+      "pos": [40, 50],
+      "size": [190, 58]
+    },
+    {
+      "id": "r_cat",
+      "type": "security",
+      "label": "mod_catalog",
+      "sublabel": "role NOLOGIN",
+      "pos": [320, 50],
+      "size": [170, 58]
+    },
+    {
+      "id": "s_cat",
+      "type": "database",
+      "label": "catalog.works",
+      "sublabel": "busca textual no banco",
+      "pos": [590, 50],
+      "size": [240, 58]
+    },
+    {
+      "id": "m_circ",
+      "type": "backend",
+      "label": "modules/circulation",
+      "sublabel": "Circulação (Core)",
+      "pos": [40, 145],
+      "size": [190, 58]
+    },
+    {
+      "id": "r_circ",
+      "type": "security",
+      "label": "mod_circulation",
+      "sublabel": "role NOLOGIN",
+      "pos": [320, 145],
+      "size": [170, 58]
+    },
+    {
+      "id": "s_circ",
+      "type": "database",
+      "label": "circulation.*",
+      "sublabel": "students · copies · loans · fines · holds",
+      "pos": [590, 145],
+      "size": [240, 58]
+    },
+    {
+      "id": "m_not",
+      "type": "backend",
+      "label": "modules/notices",
+      "sublabel": "Avisos",
+      "pos": [40, 240],
+      "size": [190, 58]
+    },
+    {
+      "id": "r_not",
+      "type": "security",
+      "label": "mod_notices",
+      "sublabel": "role NOLOGIN",
+      "pos": [320, 240],
+      "size": [170, 58]
+    },
+    {
+      "id": "s_not",
+      "type": "database",
+      "label": "notices.dispatches",
+      "sublabel": "UNIQUE idempotency_key",
+      "pos": [590, 240],
+      "size": [240, 58]
+    },
+    {
+      "id": "m_cfg",
+      "type": "backend",
+      "label": "modules/config",
+      "sublabel": "Tabela de multa",
+      "pos": [40, 335],
+      "size": [190, 58]
+    },
+    {
+      "id": "r_cfg",
+      "type": "security",
+      "label": "mod_config",
+      "sublabel": "role NOLOGIN",
+      "pos": [320, 335],
+      "size": [170, 58]
+    },
+    {
+      "id": "s_cfg",
+      "type": "database",
+      "label": "config.fine_rates",
+      "sublabel": "ADR-0007 · version",
+      "pos": [590, 335],
+      "size": [240, 58]
+    },
+    {
+      "id": "m_auth",
+      "type": "backend",
+      "label": "core/auth",
+      "sublabel": "Sessões e login",
+      "pos": [40, 430],
+      "size": [190, 58]
+    },
+    {
+      "id": "r_auth",
+      "type": "security",
+      "label": "mod_auth",
+      "sublabel": "role NOLOGIN",
+      "pos": [320, 430],
+      "size": [170, 58]
+    },
+    {
+      "id": "s_auth",
+      "type": "database",
+      "label": "auth.*",
+      "sublabel": "accounts · sessions",
+      "pos": [590, 430],
+      "size": [240, 58]
+    },
+    {
+      "id": "s_audit",
+      "type": "database",
+      "label": "audit.events",
+      "sublabel": "append-only · sem UPDATE/DELETE",
+      "pos": [590, 535],
+      "size": [240, 64]
+    },
+    {
+      "id": "a_beh",
+      "type": "messagebus",
+      "label": "Mediador (auditoria)",
+      "sublabel": "packages/core · mesma tx",
+      "pos": [930, 480],
+      "size": [220, 58]
+    },
+    {
+      "id": "r_reader",
+      "type": "security",
+      "label": "audit_reader",
+      "sublabel": "modules/audit · SELECT",
+      "pos": [930, 585],
+      "size": [220, 58]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "Roles NOLOGIN (set_config por transação)",
+      "wraps": ["r_cat", "r_circ", "r_not", "r_cfg", "r_auth"]
+    },
+    {
+      "kind": "region",
+      "label": "PostgreSQL 18 / PGlite — schemas isolados",
+      "wraps": ["s_cat", "s_circ", "s_not", "s_cfg", "s_auth", "s_audit"],
+      "pad": 32
+    }
+  ],
+  "connections": [
+    { "id": "mc", "from": "m_cat", "to": "r_cat", "label": "set_config" },
+    { "id": "rc", "from": "r_cat", "to": "s_cat", "label": "GRANT", "variant": "security" },
+    { "id": "mi", "from": "m_circ", "to": "r_circ", "label": "set_config" },
+    { "id": "ri", "from": "r_circ", "to": "s_circ", "label": "GRANT", "variant": "security" },
+    { "id": "mn", "from": "m_not", "to": "r_not", "label": "set_config" },
+    { "id": "rn", "from": "r_not", "to": "s_not", "label": "GRANT", "variant": "security" },
+    { "id": "mg", "from": "m_cfg", "to": "r_cfg", "label": "set_config" },
+    { "id": "rg", "from": "r_cfg", "to": "s_cfg", "label": "GRANT", "variant": "security" },
+    { "id": "ma", "from": "m_auth", "to": "r_auth", "label": "set_config" },
+    { "id": "ra", "from": "r_auth", "to": "s_auth", "label": "GRANT", "variant": "security" },
+    { "id": "ab", "from": "a_beh", "to": "s_audit", "label": "INSERT", "variant": "emphasis", "fromSide": "left", "toSide": "right" },
+    { "id": "rr", "from": "r_reader", "to": "s_audit", "label": "SELECT", "variant": "dashed", "fromSide": "left", "toSide": "right" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Toda transação",
+      "items": [
+        "SELECT set_config('search_path',$1,true), set_config('role',$2,true)",
+        "Login app tem NOINHERIT: sem role da transação, queries falham"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Runner especificado",
+      "items": [
+        "0001..0006 aplicadas com pg_advisory_lock e checksum SHA-256 (ADR-0018)",
+        "Compatível com PostgreSQL 18 e PGlite embutido (ADR-0022)"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Isolamento provado",
+      "items": [
+        "Teste real prova que mod_circulation não lê catalog.works nem altera audit.events",
+        "Vazamento falha no banco, não apenas no lint (ADR-0016)"
+      ]
+    }
+  ]
+}

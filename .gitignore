@@ -1,0 +1,10 @@
+node_modules/
+dist/
+scratch/
+.vite/
+*.local
+.env
+.env.*
+coverage/
+reports/
+.stryker-tmp/

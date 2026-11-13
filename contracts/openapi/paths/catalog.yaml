@@ -1,0 +1,154 @@
+# Acervo bibliográfico (spec 002, mod_catalog, schema catalog).
+works:
+  get:
+    operationId: searchCatalogWorks
+    tags: [catalog]
+    summary: Busca obras no catálogo com paginação por cursor
+    description: |
+      Consulta título, autores e assunto no próprio banco (ADR-0005), com paginação por cursor
+      (ADR-0020) e meta p95 abaixo de 1 s (RNF-01). Disponível para bibliotecária e aluno.
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - name: q
+        in: query
+        required: false
+        description: Termo livre para busca em título, autor, assunto ou ISBN.
+        schema:
+          type: string
+          maxLength: 120
+      - name: subject
+        in: query
+        required: false
+        description: Filtro exato ou parcial por assunto.
+        schema:
+          type: string
+          maxLength: 120
+      - $ref: ../components/common.yaml#/parameters/Limit
+      - $ref: ../components/common.yaml#/parameters/Cursor
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    responses:
+      '200':
+        description: Página de obras do catálogo.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/WorkPage
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '500':
+        $ref: ../components/common.yaml#/responses/InternalError
+  post:
+    operationId: createWork
+    tags: [catalog]
+    summary: Cadastra uma nova obra bibliográfica
+    description: Restrito à `librarian`. Normaliza ISBN e valida unicidade (`/problems/isbn-taken`).
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/CsrfToken
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas.yaml#/CreateWorkRequest
+    responses:
+      '201':
+        description: Obra cadastrada.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+          Location:
+            $ref: ../components/common.yaml#/headers/Location
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/Work
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+      '409':
+        $ref: ../components/common.yaml#/responses/Conflict
+      '500':
+        $ref: ../components/common.yaml#/responses/InternalError
+
+work:
+  parameters:
+    - $ref: ../components/common.yaml#/parameters/WorkId
+  get:
+    operationId: getWork
+    tags: [catalog]
+    summary: Consulta uma obra pelo id
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    responses:
+      '200':
+        description: Dados completos da obra.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/Work
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound
+      '500':
+        $ref: ../components/common.yaml#/responses/InternalError
+  patch:
+    operationId: updateWork
+    tags: [catalog]
+    summary: Edita metadados de uma obra com controle otimista de versão
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/CsrfToken
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas.yaml#/UpdateWorkRequest
+    responses:
+      '200':
+        description: Obra atualizada.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/Work
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+      '404':
+        $ref: ../components/common.yaml#/responses/NotFound
+      '409':
+        $ref: ../components/common.yaml#/responses/Conflict
+      '500':
+        $ref: ../components/common.yaml#/responses/InternalError

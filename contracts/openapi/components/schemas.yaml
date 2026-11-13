@@ -1,0 +1,654 @@
+# Esquemas compartilhados da API (ADR-0014, ADR-0020, ADR-0021).
+Id:
+  type: string
+  format: uuid
+  description: Identificador único no formato UUIDv7.
+
+Timestamp:
+  type: string
+  format: date-time
+  description: Data e hora em ISO-8601 UTC.
+
+DateOnly:
+  type: string
+  pattern: '^\d{4}-\d{2}-\d{2}$'
+  description: Data civil no formato `AAAA-MM-DD`.
+
+StudentRegistration:
+  type: string
+  minLength: 3
+  maxLength: 32
+  pattern: '^[A-Za-z0-9-]+$'
+  description: Matrícula acadêmica do aluno na universidade.
+
+Barcode:
+  type: string
+  minLength: 4
+  maxLength: 32
+  pattern: '^[A-Za-z0-9-]+$'
+  description: Código de barras físico do exemplar.
+
+Role:
+  type: string
+  enum: [librarian, student]
+  description: Perfil de autorização na biblioteca (ADR-0010).
+
+CopyStatus:
+  type: string
+  enum: [available, on-loan, reserved, retired]
+  description: Estados do exemplar (RF-01..RF-05).
+
+LoanStatus:
+  type: string
+  enum: [open, returned]
+
+HoldStatus:
+  type: string
+  enum: [waiting, ready, fulfilled, expired, cancelled]
+
+FineStatus:
+  type: string
+  enum: [pending, paid]
+
+NoticeStatus:
+  type: string
+  enum: [sent, skipped]
+
+AuditResult:
+  type: string
+  enum: [success, denied, error]
+
+VersionInput:
+  type: object
+  additionalProperties: false
+  required: [version]
+  properties:
+    version:
+      type: integer
+      minimum: 1
+
+ReadinessChecks:
+  type: object
+  required: [database]
+  properties:
+    database:
+      type: string
+      enum: [up, down]
+
+HealthStatus:
+  type: object
+  required: [status]
+  properties:
+    status:
+      type: string
+      enum: [live, ready]
+    checks:
+      $ref: '#/ReadinessChecks'
+    modules:
+      type: array
+      items:
+        type: string
+
+Principal:
+  type: object
+  required: [userId, role, displayName, email]
+  properties:
+    userId:
+      $ref: '#/Id'
+    role:
+      $ref: '#/Role'
+    displayName:
+      type: string
+    email:
+      type: string
+      format: email
+    studentRegistration:
+      oneOf:
+        - $ref: '#/StudentRegistration'
+        - type: 'null'
+
+LoginRequest:
+  type: object
+  additionalProperties: false
+  required: [email]
+  properties:
+    email:
+      type: string
+      format: email
+      maxLength: 160
+    password:
+      type: string
+      maxLength: 128
+
+LoginResult:
+  type: object
+  required: [principal, accessToken]
+  properties:
+    principal:
+      $ref: '#/Principal'
+    accessToken:
+      type: string
+      description: Token emitido para clientes fora do navegador; o navegador recebe os cookies `lib_sid` e `lib_csrf`.
+
+LogoutResult:
+  type: object
+  required: [ok]
+  properties:
+    ok:
+      type: boolean
+
+DevAccountList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Principal'
+
+Work:
+  type: object
+  required: [id, title, authors, subject, isbn, version, createdAt, updatedAt]
+  properties:
+    id:
+      $ref: '#/Id'
+    title:
+      type: string
+      minLength: 1
+      maxLength: 200
+    authors:
+      type: array
+      minItems: 1
+      items:
+        type: string
+    subject:
+      type: string
+      minLength: 1
+      maxLength: 120
+    isbn:
+      oneOf:
+        - type: string
+        - type: 'null'
+    version:
+      type: integer
+      minimum: 1
+    createdAt:
+      $ref: '#/Timestamp'
+    updatedAt:
+      $ref: '#/Timestamp'
+
+CreateWorkRequest:
+  type: object
+  additionalProperties: false
+  required: [title, authors, subject]
+  properties:
+    title:
+      type: string
+      minLength: 1
+      maxLength: 200
+    authors:
+      type: array
+      minItems: 1
+      maxItems: 20
+      items:
+        type: string
+        minLength: 1
+        maxLength: 120
+    subject:
+      type: string
+      minLength: 1
+      maxLength: 120
+    isbn:
+      oneOf:
+        - type: string
+          minLength: 10
+          maxLength: 20
+        - type: 'null'
+
+UpdateWorkRequest:
+  type: object
+  additionalProperties: false
+  required: [version]
+  properties:
+    version:
+      type: integer
+      minimum: 1
+    title:
+      type: string
+      minLength: 1
+      maxLength: 200
+    authors:
+      type: array
+      minItems: 1
+      maxItems: 20
+      items:
+        type: string
+        minLength: 1
+        maxLength: 120
+    subject:
+      type: string
+      minLength: 1
+      maxLength: 120
+    isbn:
+      oneOf:
+        - type: string
+          minLength: 10
+          maxLength: 20
+        - type: 'null'
+
+WorkPage:
+  type: object
+  required: [items, nextCursor]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Work'
+    nextCursor:
+      oneOf:
+        - type: string
+        - type: 'null'
+
+Copy:
+  type: object
+  required: [id, workId, workTitle, barcode, status, version, createdAt, updatedAt]
+  properties:
+    id:
+      $ref: '#/Id'
+    workId:
+      $ref: '#/Id'
+    workTitle:
+      type: string
+    barcode:
+      $ref: '#/Barcode'
+    status:
+      $ref: '#/CopyStatus'
+    version:
+      type: integer
+      minimum: 1
+    createdAt:
+      $ref: '#/Timestamp'
+    updatedAt:
+      $ref: '#/Timestamp'
+
+RegisterCopyRequest:
+  type: object
+  additionalProperties: false
+  required: [workId, barcode]
+  properties:
+    workId:
+      $ref: '#/Id'
+    barcode:
+      $ref: '#/Barcode'
+
+CopyPage:
+  type: object
+  required: [items, nextCursor]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Copy'
+    nextCursor:
+      oneOf:
+        - type: string
+        - type: 'null'
+
+WorkAvailability:
+  type: object
+  required:
+    [workId, totalCopies, availableCopies, onLoanCopies, reservedCopies, retiredCopies, waitingHolds, canPlaceHold]
+  properties:
+    workId:
+      $ref: '#/Id'
+    totalCopies:
+      type: integer
+      minimum: 0
+    availableCopies:
+      type: integer
+      minimum: 0
+    onLoanCopies:
+      type: integer
+      minimum: 0
+    reservedCopies:
+      type: integer
+      minimum: 0
+    retiredCopies:
+      type: integer
+      minimum: 0
+    waitingHolds:
+      type: integer
+      minimum: 0
+    canPlaceHold:
+      type: boolean
+
+Loan:
+  type: object
+  required:
+    [id, copyId, barcode, workId, workTitle, studentId, studentRegistration, loanDate, dueDate, returnedAt, renewalsCount, status, version]
+  properties:
+    id:
+      $ref: '#/Id'
+    copyId:
+      $ref: '#/Id'
+    barcode:
+      $ref: '#/Barcode'
+    workId:
+      $ref: '#/Id'
+    workTitle:
+      type: string
+    studentId:
+      $ref: '#/Id'
+    studentRegistration:
+      $ref: '#/StudentRegistration'
+    loanDate:
+      $ref: '#/DateOnly'
+    dueDate:
+      $ref: '#/DateOnly'
+    returnedAt:
+      oneOf:
+        - $ref: '#/DateOnly'
+        - type: 'null'
+    renewalsCount:
+      type: integer
+      minimum: 0
+    status:
+      $ref: '#/LoanStatus'
+    version:
+      type: integer
+      minimum: 1
+
+LendCopyRequest:
+  type: object
+  additionalProperties: false
+  required: [studentRegistration, barcode]
+  properties:
+    studentRegistration:
+      $ref: '#/StudentRegistration'
+    barcode:
+      $ref: '#/Barcode'
+
+ReturnCopyRequest:
+  type: object
+  additionalProperties: false
+  required: [barcode]
+  properties:
+    barcode:
+      $ref: '#/Barcode'
+
+Fine:
+  type: object
+  required:
+    [id, studentId, loanId, overdueDays, dailyRateCents, amountCents, status, createdAt, paidAt, version]
+  properties:
+    id:
+      $ref: '#/Id'
+    studentId:
+      $ref: '#/Id'
+    loanId:
+      $ref: '#/Id'
+    overdueDays:
+      type: integer
+      minimum: 1
+    dailyRateCents:
+      type: integer
+      minimum: 1
+    amountCents:
+      type: integer
+      minimum: 1
+    status:
+      $ref: '#/FineStatus'
+    createdAt:
+      $ref: '#/Timestamp'
+    paidAt:
+      oneOf:
+        - $ref: '#/Timestamp'
+        - type: 'null'
+    version:
+      type: integer
+      minimum: 1
+
+Hold:
+  type: object
+  required:
+    [id, workId, workTitle, studentId, studentRegistration, assignedCopyId, assignedBarcode, status, createdAt, expiresAt, version]
+  properties:
+    id:
+      $ref: '#/Id'
+    workId:
+      $ref: '#/Id'
+    workTitle:
+      type: string
+    studentId:
+      $ref: '#/Id'
+    studentRegistration:
+      $ref: '#/StudentRegistration'
+    assignedCopyId:
+      oneOf:
+        - $ref: '#/Id'
+        - type: 'null'
+    assignedBarcode:
+      oneOf:
+        - $ref: '#/Barcode'
+        - type: 'null'
+    status:
+      $ref: '#/HoldStatus'
+    createdAt:
+      $ref: '#/Timestamp'
+    expiresAt:
+      oneOf:
+        - $ref: '#/Timestamp'
+        - type: 'null'
+    version:
+      type: integer
+      minimum: 1
+
+PlaceHoldRequest:
+  type: object
+  additionalProperties: false
+  required: [workId]
+  properties:
+    workId:
+      $ref: '#/Id'
+    studentRegistration:
+      $ref: '#/StudentRegistration'
+
+ReturnCopyResult:
+  type: object
+  required: [loan, copy, fine, assignedHold]
+  properties:
+    loan:
+      $ref: '#/Loan'
+    copy:
+      $ref: '#/Copy'
+    fine:
+      oneOf:
+        - $ref: '#/Fine'
+        - type: 'null'
+    assignedHold:
+      oneOf:
+        - $ref: '#/Hold'
+        - type: 'null'
+
+WithdrawHoldResult:
+  type: object
+  required: [hold, loan, copy]
+  properties:
+    hold:
+      $ref: '#/Hold'
+    loan:
+      $ref: '#/Loan'
+    copy:
+      $ref: '#/Copy'
+
+ExpireHoldResult:
+  type: object
+  required: [expiredHold, copy, promotedHold]
+  properties:
+    expiredHold:
+      $ref: '#/Hold'
+    copy:
+      $ref: '#/Copy'
+    promotedHold:
+      oneOf:
+        - $ref: '#/Hold'
+        - type: 'null'
+
+StudentSummary:
+  type: object
+  required: [id, registration, name, email, activeLoansCount, loanLimit, openLoans, holds, fines]
+  properties:
+    id:
+      $ref: '#/Id'
+    registration:
+      $ref: '#/StudentRegistration'
+    name:
+      type: string
+    email:
+      type: string
+      format: email
+    activeLoansCount:
+      type: integer
+      minimum: 0
+    loanLimit:
+      type: integer
+      minimum: 1
+    openLoans:
+      type: array
+      items:
+        $ref: '#/Loan'
+    holds:
+      type: array
+      items:
+        $ref: '#/Hold'
+    fines:
+      type: array
+      items:
+        $ref: '#/Fine'
+
+NoticeDispatch:
+  type: object
+  required:
+    [id, eventId, holdId, workId, workTitle, studentId, studentRegistration, recipientEmail, idempotencyKey, subject, body, status, createdAt]
+  properties:
+    id:
+      $ref: '#/Id'
+    eventId:
+      $ref: '#/Id'
+    holdId:
+      $ref: '#/Id'
+    workId:
+      $ref: '#/Id'
+    workTitle:
+      type: string
+    studentId:
+      $ref: '#/Id'
+    studentRegistration:
+      $ref: '#/StudentRegistration'
+    recipientEmail:
+      type: string
+      format: email
+    idempotencyKey:
+      type: string
+    subject:
+      type: string
+    body:
+      type: string
+    status:
+      $ref: '#/NoticeStatus'
+    createdAt:
+      $ref: '#/Timestamp'
+
+NoticePage:
+  type: object
+  required: [items, nextCursor]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/NoticeDispatch'
+    nextCursor:
+      oneOf:
+        - type: string
+        - type: 'null'
+
+FineRateConfig:
+  type: object
+  required: [id, dailyRateCents, version, updatedAt]
+  properties:
+    id:
+      type: string
+    dailyRateCents:
+      type: integer
+      minimum: 1
+      maximum: 100000
+    version:
+      type: integer
+      minimum: 1
+    updatedAt:
+      $ref: '#/Timestamp'
+
+UpdateFineRateRequest:
+  type: object
+  additionalProperties: false
+  required: [dailyRateCents, version]
+  properties:
+    dailyRateCents:
+      type: integer
+      minimum: 1
+      maximum: 100000
+    version:
+      type: integer
+      minimum: 1
+
+AuditEvent:
+  type: object
+  required:
+    [id, occurredAt, requestId, actorId, actorRole, action, resourceType, resourceId, result, reason, changes]
+  properties:
+    id:
+      $ref: '#/Id'
+    occurredAt:
+      $ref: '#/Timestamp'
+    requestId:
+      type: string
+    actorId:
+      oneOf:
+        - $ref: '#/Id'
+        - type: 'null'
+    actorRole:
+      oneOf:
+        - type: string
+        - type: 'null'
+    action:
+      type: string
+    resourceType:
+      type: string
+    resourceId:
+      oneOf:
+        - type: string
+        - type: 'null'
+    result:
+      $ref: '#/AuditResult'
+    reason:
+      oneOf:
+        - type: string
+        - type: 'null'
+    changes:
+      oneOf:
+        - type: object
+          additionalProperties: true
+        - type: 'null'
+
+AuditEventPage:
+  type: object
+  required: [items, nextCursor]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/AuditEvent'
+    nextCursor:
+      oneOf:
+        - type: string
+        - type: 'null'

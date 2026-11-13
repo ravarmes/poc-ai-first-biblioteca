@@ -1,0 +1,8 @@
+{
+  "name": "@biblioteca/docs-check",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/check.ts"
+  }
+}

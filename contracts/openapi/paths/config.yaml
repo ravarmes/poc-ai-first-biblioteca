@@ -1,0 +1,57 @@
+# Configuração administrativa da tabela de multa (spec 005, ADR-0007, mod_config).
+fineRate:
+  get:
+    operationId: getFineRate
+    tags: [config]
+    summary: Consulta o valor diário vigente da multa
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    responses:
+      '200':
+        description: Configuração atual da multa diária.
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/FineRateConfig
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+  patch:
+    operationId: updateFineRate
+    tags: [config]
+    summary: Atualiza o valor diário da multa com registro obrigatório na auditoria (ADR-0007)
+    security:
+      - cookieAuth: []
+      - bearerAuth: []
+    parameters:
+      - $ref: ../components/common.yaml#/parameters/CsrfToken
+      - $ref: ../components/common.yaml#/parameters/RequestId
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas.yaml#/UpdateFineRateRequest
+    responses:
+      '200':
+        description: Valor diário atualizado e auditado (`fine_rate.updated`).
+        headers:
+          X-Request-Id:
+            $ref: ../components/common.yaml#/headers/RequestId
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas.yaml#/FineRateConfig
+      '400':
+        $ref: ../components/common.yaml#/responses/ValidationError
+      '401':
+        $ref: ../components/common.yaml#/responses/Unauthenticated
+      '403':
+        $ref: ../components/common.yaml#/responses/Forbidden
+      '409':
+        $ref: ../components/common.yaml#/responses/Conflict
