@@ -45,7 +45,7 @@ export function createRetireCopyHandler(
         resourceType: "copy",
         resourceId: saved.id,
         changes: {
-          barcode: saved.barcode,
+          barcode: saved.barcode.value,
           status: { before: current.status, after: saved.status },
         },
       });

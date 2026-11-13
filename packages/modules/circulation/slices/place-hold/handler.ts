@@ -3,7 +3,7 @@ import type { HoldDto, PlaceHoldRequest } from "@biblioteca/contract";
 import { ProblemError, type UseCase } from "@biblioteca/core";
 import { Hold } from "../../domain/hold.ts";
 import { type AcademicStudent, CIRCULATION_SCOPE } from "../../domain/ports.ts";
-import { normalizeRegistration } from "../../domain/value-objects.ts";
+import { StudentRegistration } from "../../domain/value-objects.ts";
 import { requireActiveAcademicStudent } from "../../infrastructure/academic-translator.ts";
 import { type CirculationDeps, resolveClock, resolveRepoFactory, toHoldDto } from "../shared.ts";
 
@@ -25,7 +25,7 @@ export function createPlaceHoldHandler(
     authorize: (input, principal) => {
       if (principal.role === "librarian") return true;
       if (!principal.studentRegistration) return false;
-      return !input.studentRegistration || normalizeRegistration(input.studentRegistration) === principal.studentRegistration;
+      return !input.studentRegistration || StudentRegistration.of(input.studentRegistration).value === principal.studentRegistration;
     },
     prepare: async ({ input, principal }) => {
       const targetRegistration =
@@ -43,7 +43,10 @@ export function createPlaceHoldHandler(
         throw new ProblemError("not-found", { detail: "Obra não encontrada no catálogo." });
       }
 
-      const academic = await requireActiveAcademicStudent(deps.academicRegistry, targetRegistration);
+      const academic = await requireActiveAcademicStudent(
+        deps.academicRegistry,
+        StudentRegistration.of(targetRegistration),
+      );
       return { academic, workTitle: work.title };
     },
     handle: async ({ input, trx, emit, prepared }) => {
@@ -85,7 +88,7 @@ export function createPlaceHoldHandler(
         resourceId: savedHold.id,
         changes: {
           workId: savedHold.workId,
-          studentRegistration: studentProps.registration,
+          studentRegistration: studentProps.registration.value,
           status: savedHold.status,
         },
       });

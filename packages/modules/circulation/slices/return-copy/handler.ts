@@ -6,7 +6,7 @@ import { Fine } from "../../domain/fine.ts";
 import { Hold } from "../../domain/hold.ts";
 import { Loan } from "../../domain/loan.ts";
 import { CIRCULATION_SCOPE } from "../../domain/ports.ts";
-import { normalizeBarcode } from "../../domain/value-objects.ts";
+import { Barcode, Money } from "../../domain/value-objects.ts";
 import {
   buildCopyReturnedEventV1,
   type CirculationDeps,
@@ -34,12 +34,12 @@ export function createReturnCopyHandler(
     scope: CIRCULATION_SCOPE,
     allowedRoles: ["librarian"],
     prepare: async ({ input, read }) => {
-      const barcode = normalizeBarcode(input.barcode);
+      const barcode = Barcode.of(input.barcode);
       const dailyRateCents = await deps.config.currentDailyRateCents();
       const copy = await read(CIRCULATION_SCOPE, (trx) => repositoryFor(trx).findCopyByBarcode(barcode));
       if (!copy) {
         throw new ProblemError("not-found", {
-          detail: `Exemplar com código de barras '${barcode}' não encontrado.`,
+          detail: `Exemplar com código de barras '${barcode.value}' não encontrado.`,
         });
       }
       const work = await deps.catalog.getWork(copy.workId);
@@ -50,14 +50,14 @@ export function createReturnCopyHandler(
     },
     handle: async ({ input, trx, emit, afterCommit, prepared }) => {
       const repo = repositoryFor(trx);
-      const barcode = normalizeBarcode(input.barcode);
+      const barcode = Barcode.of(input.barcode);
       const nowIso = clock.nowIso();
       const todayYmd = clock.todayYmd();
 
       const copyProps = await repo.findCopyByBarcode(barcode);
       if (!copyProps) {
         throw new ProblemError("not-found", {
-          detail: `Exemplar com código de barras '${barcode}' não encontrado.`,
+          detail: `Exemplar com código de barras '${barcode.value}' não encontrado.`,
         });
       }
 
@@ -69,7 +69,7 @@ export function createReturnCopyHandler(
       const openLoan = await repo.findOpenLoanByCopyId(copyProps.id);
       if (!openLoan) {
         throw new ProblemError("no-active-loan", {
-          detail: `Não há empréstimo em aberto para o exemplar '${barcode}'.`,
+          detail: `Não há empréstimo em aberto para o exemplar '${barcode.value}'.`,
         });
       }
 
@@ -87,7 +87,7 @@ export function createReturnCopyHandler(
         loanId: savedLoan.id,
         dueDateYmd: savedLoan.dueDate,
         returnedDateYmd: todayYmd,
-        dailyRateCents: prepared.dailyRateCents,
+        dailyRate: Money.ofCents(prepared.dailyRateCents),
         nowIso,
       });
       if (maybeFine) {
@@ -130,7 +130,7 @@ export function createReturnCopyHandler(
         resourceType: "copy",
         resourceId: savedCopy.id,
         changes: {
-          barcode: savedCopy.barcode,
+          barcode: savedCopy.barcode.value,
           loanId: savedLoan.id,
           copyStatus: savedCopy.status,
           fineAmountCents: savedFineDto?.amountCents ?? null,

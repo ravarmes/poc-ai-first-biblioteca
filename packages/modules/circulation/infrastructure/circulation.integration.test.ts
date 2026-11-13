@@ -14,7 +14,7 @@ import { createInProcessNoticesFacade, type EmailMessage } from "@biblioteca/mod
 import { sql } from "kysely";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CIRCULATION_SCOPE } from "../domain/ports.ts";
-import { FixedClock } from "../domain/value-objects.ts";
+import { Barcode, FixedClock } from "../domain/value-objects.ts";
 import { InMemoryAcademicRegistry } from "../infrastructure/academic-translator.ts";
 import { ConformistCalendarClient, generateAcademicDaysRange } from "../infrastructure/calendar-client.ts";
 import { kyselyCirculationRepository } from "../infrastructure/kysely-circulation-repo.ts";
@@ -100,7 +100,7 @@ describe("Integração SQL do módulo Circulação (concorrência, atomicidade e
       await mediator.send(register, { workId, barcode }, { principal: lib });
     }
     const totemCopy = await runInUnitOfWork(managed.db, CIRCULATION_SCOPE, (trx) =>
-      kyselyCirculationRepository(trx).findCopyByBarcode("AGR-4"),
+      kyselyCirculationRepository(trx).findCopyByBarcode(Barcode.of("AGR-4")),
     );
     await mediator.send(lend, { studentRegistration: "2026-0001", barcode: "AGR-1" }, { principal: lib });
     const second = await mediator.send(lend, { studentRegistration: "2026-0001", barcode: "AGR-2" }, { principal: lib });

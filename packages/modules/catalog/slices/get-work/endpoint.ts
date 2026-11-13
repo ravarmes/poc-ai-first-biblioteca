@@ -1,6 +1,7 @@
 import { type WorkDto, WorkIdParamsSchema } from "@biblioteca/contract";
 import { type ApiRouter, type Mediator, parseInput, principalOf } from "@biblioteca/core";
 import { createGetWorkHandler } from "./handler.ts";
+import { toWorkDto } from "../shared.ts";
 
 export function registerGetWorkEndpoint(
   app: ApiRouter,
@@ -14,7 +15,7 @@ export function registerGetWorkEndpoint(
       { workId },
       { principal: principalOf(c), requestId: c.get("requestId") },
     );
-    const work: WorkDto = { ...found, authors: [...found.authors] };
+    const work: WorkDto = toWorkDto(found);
     return c.json(work);
   });
 }

@@ -98,7 +98,7 @@ export function createExpireHoldHandler(
         resourceType: "hold",
         resourceId: savedExpired.id,
         changes: {
-          barcode: savedCopy.barcode,
+          barcode: savedCopy.barcode.value,
           copyStatus: savedCopy.status,
           promotedHoldId: promotedDto?.id ?? null,
         },

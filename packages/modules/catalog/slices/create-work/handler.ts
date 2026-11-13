@@ -26,10 +26,10 @@ export function createCreateWorkHandler(
         resourceType: "work",
         resourceId: saved.id,
         changes: {
-          title: saved.title,
+          title: saved.title.value,
           authors: saved.authors,
           subject: saved.subject,
-          isbn: saved.isbn,
+          isbn: saved.isbn?.value ?? null,
         },
       });
       return saved;

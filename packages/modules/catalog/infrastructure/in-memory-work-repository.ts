@@ -8,8 +8,8 @@ export class InMemoryWorkRepository implements WorkRepository {
   async insert(work: WorkProps): Promise<WorkProps> {
     if (work.isbn) {
       for (const existing of this.items.values()) {
-        if (existing.isbn === work.isbn) {
-          throw new ProblemError("isbn-taken", { detail: `Já existe obra com ISBN ${work.isbn}.` });
+        if (existing.isbn?.equals(work.isbn)) {
+          throw new ProblemError("isbn-taken", { detail: `Já existe obra com ISBN ${work.isbn.value}.` });
         }
       }
     }
@@ -30,8 +30,8 @@ export class InMemoryWorkRepository implements WorkRepository {
     }
     if (work.isbn) {
       for (const existing of this.items.values()) {
-        if (existing.id !== work.id && existing.isbn === work.isbn) {
-          throw new ProblemError("isbn-taken", { detail: `Já existe obra com ISBN ${work.isbn}.` });
+        if (existing.id !== work.id && existing.isbn?.equals(work.isbn)) {
+          throw new ProblemError("isbn-taken", { detail: `Já existe obra com ISBN ${work.isbn.value}.` });
         }
       }
     }
@@ -59,9 +59,9 @@ export class InMemoryWorkRepository implements WorkRepository {
       .filter((w) => {
         if (q) {
           const matches =
-            w.title.toLowerCase().includes(q) ||
+            w.title.value.toLowerCase().includes(q) ||
             w.subject.toLowerCase().includes(q) ||
-            (w.isbn?.toLowerCase().includes(q) ?? false) ||
+            (w.isbn?.value.toLowerCase().includes(q) ?? false) ||
             w.authors.some((a) => a.toLowerCase().includes(q));
           if (!matches) return false;
         }

@@ -7,6 +7,7 @@ import type { FineProps } from "./fine.ts";
 import type { HoldProps } from "./hold.ts";
 import type { LoanProps } from "./loan.ts";
 import type { AcademicStudent, Student, StudentProps } from "./student.ts";
+import type { Barcode, StudentRegistration } from "./value-objects.ts";
 
 export type { AcademicStudent, StudentProps };
 
@@ -34,7 +35,7 @@ export interface CirculationRepository {
   // Students
   upsertStudentFromAcademic(academic: AcademicStudent, nowIso: string): Promise<StudentProps>;
   findStudentById(studentId: string): Promise<StudentProps | null>;
-  findStudentByRegistration(registration: string): Promise<StudentProps | null>;
+  findStudentByRegistration(registration: StudentRegistration): Promise<StudentProps | null>;
   /** O agregado Student inteiro: o aluno, os empréstimos em aberto e as multas pendentes; `null` se não existe. */
   loadStudent(studentId: string): Promise<Student | null>;
   /**
@@ -48,7 +49,7 @@ export interface CirculationRepository {
   insertCopy(copy: CopyProps): Promise<CopyProps>;
   findCopyById(copyId: string): Promise<CopyProps | null>;
   findCopiesByIds(copyIds: readonly string[]): Promise<CopyProps[]>;
-  findCopyByBarcode(barcode: string): Promise<CopyProps | null>;
+  findCopyByBarcode(barcode: Barcode): Promise<CopyProps | null>;
   updateCopyWithVersion(copy: CopyProps, expectedVersion: number): Promise<CopyProps>;
   listCopies(filter: ListCopiesFilter): Promise<PageResult<CopyProps>>;
   countByWork(workId: string): Promise<CopyCountsByWork>;
@@ -77,7 +78,7 @@ export interface CirculationRepository {
 }
 
 export interface AcademicRegistryPort {
-  findByRegistration(registration: string): Promise<AcademicStudent | null>;
+  findByRegistration(registration: StudentRegistration): Promise<AcademicStudent | null>;
 }
 
 export interface SchoolCalendarPort {

@@ -1,5 +1,6 @@
 import { SearchWorksQuerySchema, type WorkPageDto } from "@biblioteca/contract";
 import { type ApiRouter, type Mediator, parseInput, principalOf } from "@biblioteca/core";
+import { toWorkDto } from "../shared.ts";
 import { createSearchWorksHandler } from "./handler.ts";
 
 export function registerSearchWorksEndpoint(
@@ -14,7 +15,7 @@ export function registerSearchWorksEndpoint(
       requestId: c.get("requestId"),
     });
     const page: WorkPageDto = {
-      items: rawPage.items.map((w) => ({ ...w, authors: [...w.authors] })),
+      items: rawPage.items.map(toWorkDto),
       nextCursor: rawPage.nextCursor,
     };
     return c.json(page);

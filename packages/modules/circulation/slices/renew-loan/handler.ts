@@ -33,7 +33,7 @@ export function createRenewLoanHandler(
         const loan = await repo.findLoanById(input.loanId);
         if (!loan) return true; // deixa `prepare` responder 404 em vez de mascarar com 403
         const owner = await repo.findStudentById(loan.studentId);
-        return owner?.registration === principal.studentRegistration;
+        return owner?.registration.value === principal.studentRegistration;
       });
     },
     prepare: async ({ input, read }) => {

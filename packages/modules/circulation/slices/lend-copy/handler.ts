@@ -6,7 +6,7 @@ import type { LendCopyRequest, LoanDto } from "@biblioteca/contract";
 import { ProblemError, type UseCase } from "@biblioteca/core";
 import { Copy } from "../../domain/copy.ts";
 import { type AcademicStudent, CIRCULATION_SCOPE } from "../../domain/ports.ts";
-import { normalizeBarcode, normalizeRegistration } from "../../domain/value-objects.ts";
+import { Barcode, StudentRegistration } from "../../domain/value-objects.ts";
 import { requireActiveAcademicStudent } from "../../infrastructure/academic-translator.ts";
 import { type CirculationDeps, resolveClock, resolveRepoFactory, toLoanDto } from "../shared.ts";
 
@@ -28,8 +28,8 @@ export function createLendCopyHandler(
     scope: CIRCULATION_SCOPE,
     allowedRoles: ["librarian"],
     prepare: async ({ input, read }) => {
-      const registration = normalizeRegistration(input.studentRegistration);
-      const barcode = normalizeBarcode(input.barcode);
+      const registration = StudentRegistration.of(input.studentRegistration);
+      const barcode = Barcode.of(input.barcode);
 
       const academic = await requireActiveAcademicStudent(deps.academicRegistry, registration);
       const calendar = await deps.calendar.getCalendar();
@@ -39,7 +39,7 @@ export function createLendCopyHandler(
       const copy = await read(CIRCULATION_SCOPE, (trx) => repositoryFor(trx).findCopyByBarcode(barcode));
       if (!copy) {
         throw new ProblemError("not-found", {
-          detail: `Exemplar com código de barras '${barcode}' não encontrado.`,
+          detail: `Exemplar com código de barras '${barcode.value}' não encontrado.`,
         });
       }
       const work = await deps.catalog.getWork(copy.workId);
@@ -53,7 +53,7 @@ export function createLendCopyHandler(
     handle: async ({ input, trx, emit, prepared }) => {
       const repo = repositoryFor(trx);
       const nowIso = clock.nowIso();
-      const barcode = normalizeBarcode(input.barcode);
+      const barcode = Barcode.of(input.barcode);
 
       // 1. Busca o Student inteiro: o aluno (sincronizado com a Secretaria), os empréstimos em aberto e as multas.
       const synced = await repo.upsertStudentFromAcademic(prepared.academic, nowIso);
@@ -66,7 +66,7 @@ export function createLendCopyHandler(
       const copyProps = await repo.findCopyByBarcode(barcode);
       if (!copyProps) {
         throw new ProblemError("not-found", {
-          detail: `Exemplar com código de barras '${barcode}' não encontrado.`,
+          detail: `Exemplar com código de barras '${barcode.value}' não encontrado.`,
         });
       }
 
@@ -88,8 +88,8 @@ export function createLendCopyHandler(
         resourceType: "loan",
         resourceId: savedLoan.id,
         changes: {
-          barcode: savedCopy.barcode,
-          studentRegistration: studentProps.registration,
+          barcode: savedCopy.barcode.value,
+          studentRegistration: studentProps.registration.value,
           dueDate: savedLoan.dueDate,
         },
       });

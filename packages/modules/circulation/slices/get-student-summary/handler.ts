@@ -6,7 +6,7 @@ import type { HoldProps } from "../../domain/hold.ts";
 import type { LoanProps } from "../../domain/loan.ts";
 import { type AcademicStudent, CIRCULATION_SCOPE } from "../../domain/ports.ts";
 import { STUDENT_LOAN_LIMIT, type StudentProps } from "../../domain/student.ts";
-import { normalizeRegistration } from "../../domain/value-objects.ts";
+import { type Barcode, StudentRegistration } from "../../domain/value-objects.ts";
 import {
   type CirculationDeps,
   resolveClock,
@@ -27,7 +27,7 @@ export type PreparedStudentSummary =
       readonly openLoans: readonly LoanProps[];
       readonly holds: readonly HoldProps[];
       readonly fines: readonly FineProps[];
-      readonly barcodesByCopyId: ReadonlyMap<string, string>;
+      readonly barcodesByCopyId: ReadonlyMap<string, Barcode>;
       readonly titlesByWorkId: ReadonlyMap<string, string>;
     }
   | {
@@ -48,10 +48,10 @@ export function createGetStudentSummaryHandler(
     authorize: (input, principal) => {
       if (principal.role === "librarian") return true;
       if (!principal.studentRegistration) return false;
-      return normalizeRegistration(input.registration) === principal.studentRegistration;
+      return StudentRegistration.of(input.registration).value === principal.studentRegistration;
     },
     prepare: async ({ input, read }) => {
-      const registration = normalizeRegistration(input.registration);
+      const registration = StudentRegistration.of(input.registration);
       const localData = await read(CIRCULATION_SCOPE, async (trx) => {
         const repo = repositoryFor(trx);
         const student = await repo.findStudentByRegistration(registration);
@@ -78,7 +78,7 @@ export function createGetStudentSummaryHandler(
         const academic = await deps.academicRegistry.findByRegistration(registration);
         if (!academic) {
           throw new ProblemError("not-found", {
-            detail: `Aluno com matrícula '${registration}' não encontrado.`,
+            detail: `Aluno com matrícula '${registration.value}' não encontrado.`,
           });
         }
         return { existsLocally: false, academic };
@@ -104,9 +104,9 @@ export function createGetStudentSummaryHandler(
         const student = await repositoryFor(trx).upsertStudentFromAcademic(prepared.academic, clock.nowIso());
         return {
           id: student.id,
-          registration: student.registration,
+          registration: student.registration.value,
           name: student.name,
-          email: student.email,
+          email: student.email.value,
           activeLoansCount: 0,
           loanLimit: STUDENT_LOAN_LIMIT,
           openLoans: [],
@@ -117,7 +117,7 @@ export function createGetStudentSummaryHandler(
 
       const openLoans: LoanDto[] = prepared.openLoans.map((loan) =>
         toLoanDto(loan, {
-          barcode: prepared.barcodesByCopyId.get(loan.copyId) ?? "N/D",
+          barcode: prepared.barcodesByCopyId.get(loan.copyId) ?? null,
           workTitle: prepared.titlesByWorkId.get(loan.workId) ?? "Obra não identificada",
           studentRegistration: prepared.student.registration,
         }),
@@ -135,9 +135,9 @@ export function createGetStudentSummaryHandler(
 
       return {
         id: prepared.student.id,
-        registration: prepared.student.registration,
+        registration: prepared.student.registration.value,
         name: prepared.student.name,
-        email: prepared.student.email,
+        email: prepared.student.email.value,
         activeLoansCount: openLoans.length,
         loanLimit: STUDENT_LOAN_LIMIT,
         openLoans,

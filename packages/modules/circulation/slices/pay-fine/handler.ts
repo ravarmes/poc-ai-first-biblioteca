@@ -32,7 +32,7 @@ export function createPayFineHandler(deps: CirculationDeps): UseCase<PayFineComm
         resourceType: "fine",
         resourceId: saved.id,
         changes: {
-          amountCents: saved.amountCents,
+          amountCents: saved.amount.cents,
           status: { before: current.status, after: saved.status },
         },
       });

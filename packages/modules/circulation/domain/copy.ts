@@ -1,12 +1,12 @@
 // Entidade Exemplar físico (Copy) e sua máquina de estados (spec 003, RN-02, RN-07).
 import type { CopyStatus } from "@biblioteca/contract";
 import { newUuidV7, ProblemError } from "@biblioteca/core";
-import { normalizeBarcode } from "./value-objects.ts";
+import { Barcode } from "./value-objects.ts";
 
 export interface CopyProps {
   readonly id: string;
   readonly workId: string;
-  readonly barcode: string;
+  readonly barcode: Barcode;
   readonly status: CopyStatus;
   readonly version: number;
   readonly createdAt: string;
@@ -24,7 +24,7 @@ export class Copy {
     return new Copy({
       id: newUuidV7(),
       workId: input.workId,
-      barcode: normalizeBarcode(input.barcode),
+      barcode: Barcode.of(input.barcode),
       status: "available",
       version: 1,
       createdAt: nowIso,
@@ -43,7 +43,7 @@ export class Copy {
   lend(nowIso: string): Copy {
     if (this.#props.status !== "available") {
       throw new ProblemError("invalid-copy-state", {
-        detail: `O exemplar ${this.#props.barcode} está em estado '${this.#props.status}' e não pode ser emprestado diretamente.`,
+        detail: `O exemplar ${this.#props.barcode.value} está em estado '${this.#props.status}' e não pode ser emprestado diretamente.`,
       });
     }
     return new Copy({
@@ -57,7 +57,7 @@ export class Copy {
   returnToPool(hasWaitingHold: boolean, nowIso: string): Copy {
     if (this.#props.status !== "on-loan") {
       throw new ProblemError("no-active-loan", {
-        detail: `O exemplar ${this.#props.barcode} não está emprestado (estado atual: '${this.#props.status}').`,
+        detail: `O exemplar ${this.#props.barcode.value} não está emprestado (estado atual: '${this.#props.status}').`,
       });
     }
     return new Copy({
@@ -71,7 +71,7 @@ export class Copy {
   withdrawFromReservation(nowIso: string): Copy {
     if (this.#props.status !== "reserved") {
       throw new ProblemError("invalid-copy-state", {
-        detail: `O exemplar ${this.#props.barcode} precisa estar reservado para retirada.`,
+        detail: `O exemplar ${this.#props.barcode.value} precisa estar reservado para retirada.`,
       });
     }
     return new Copy({
@@ -85,7 +85,7 @@ export class Copy {
   releaseReservation(hasNextWaitingHold: boolean, nowIso: string): Copy {
     if (this.#props.status !== "reserved") {
       throw new ProblemError("invalid-copy-state", {
-        detail: `O exemplar ${this.#props.barcode} não está no estado reservado.`,
+        detail: `O exemplar ${this.#props.barcode.value} não está no estado reservado.`,
       });
     }
     return new Copy({

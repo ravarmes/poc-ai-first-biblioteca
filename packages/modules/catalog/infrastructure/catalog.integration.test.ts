@@ -41,7 +41,7 @@ describe("Integração SQL do módulo Acervo (PostgreSQL / PGlite)", () => {
     const elapsedMs = performance.now() - t0;
 
     expect(match.items).toHaveLength(1);
-    expect(match.items[0]?.title).toContain("Arquitetura Limpa");
+    expect(match.items[0]?.title.value).toContain("Arquitetura Limpa");
     expect(elapsedMs).toBeLessThan(1000);
 
     // Verifica paginação com cursor no SQL real (últimos 50 registros, 2 páginas de 25)
@@ -77,7 +77,7 @@ describe("Integração SQL do módulo Acervo (PostgreSQL / PGlite)", () => {
       { readOnly: true },
     );
     expect(literalPercent.items).toHaveLength(1);
-    expect(literalPercent.items[0]?.title).toBe("Otimização 100% em SQL");
+    expect(literalPercent.items[0]?.title.value).toBe("Otimização 100% em SQL");
 
     // Verifica fachada pública
     const facade = createInProcessCatalogFacade(managed.db);

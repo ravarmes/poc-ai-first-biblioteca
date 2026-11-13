@@ -8,6 +8,7 @@ import type { HoldProps } from "../domain/hold.ts";
 import type { LoanProps } from "../domain/loan.ts";
 import type { CirculationRepository, CopyCountsByWork, ListCopiesFilter } from "../domain/ports.ts";
 import { type AcademicStudent, Student, type StudentProps } from "../domain/student.ts";
+import { Barcode, Email, Money, StudentRegistration } from "../domain/value-objects.ts";
 
 export type CirculationRepositoryFactory = (trx: Kysely<unknown>) => CirculationRepository;
 
@@ -83,9 +84,9 @@ function toIso(v: Date | string): string {
 function mapStudent(row: StudentRow): StudentProps {
   return {
     id: row.id,
-    registration: row.registration,
+    registration: StudentRegistration.of(row.registration),
     name: row.name,
-    email: row.email,
+    email: Email.of(row.email),
     version: row.version,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
@@ -96,7 +97,7 @@ function mapCopy(row: CopyRow): CopyProps {
   return {
     id: row.id,
     workId: row.work_id,
-    barcode: row.barcode,
+    barcode: Barcode.of(row.barcode),
     status: row.status,
     version: row.version,
     createdAt: toIso(row.created_at),
@@ -125,8 +126,8 @@ function mapFine(row: FineRow): FineProps {
     studentId: row.student_id,
     loanId: row.loan_id,
     overdueDays: row.overdue_days,
-    dailyRateCents: row.daily_rate_cents,
-    amountCents: row.amount_cents,
+    dailyRate: Money.ofCents(row.daily_rate_cents),
+    amount: Money.ofCents(row.amount_cents),
     status: row.status,
     createdAt: toIso(row.created_at),
     paidAt: row.paid_at ? toIso(row.paid_at) : null,
@@ -164,9 +165,9 @@ export class KyselyCirculationRepository implements CirculationRepository {
       INSERT INTO circulation.students (id, registration, name, email, version, created_at, updated_at)
       VALUES (
         ${id}::uuid,
-        ${academic.registration},
+        ${academic.registration.value},
         ${academic.name},
-        ${academic.email},
+        ${academic.email.value},
         1,
         ${nowIso}::timestamptz,
         ${nowIso}::timestamptz
@@ -199,11 +200,11 @@ export class KyselyCirculationRepository implements CirculationRepository {
     return res.rows[0] ? mapStudent(res.rows[0]) : null;
   }
 
-  async findStudentByRegistration(registration: string): Promise<StudentProps | null> {
+  async findStudentByRegistration(registration: StudentRegistration): Promise<StudentProps | null> {
     const res = await sql<StudentRow>`
       SELECT id, registration, name, email, version, created_at, updated_at
       FROM circulation.students
-      WHERE registration = ${registration}
+      WHERE registration = ${registration.value}
       LIMIT 1
     `.execute(this.#trx);
     return res.rows[0] ? mapStudent(res.rows[0]) : null;
@@ -223,7 +224,7 @@ export class KyselyCirculationRepository implements CirculationRepository {
     const props = student.props;
     const res = await sql<{ id: string }>`
       UPDATE circulation.students
-      SET name = ${props.name}, email = ${props.email}, version = ${props.version},
+      SET name = ${props.name}, email = ${props.email.value}, version = ${props.version},
         updated_at = ${props.updatedAt}::timestamptz
       WHERE id = ${props.id}::uuid AND version = ${expectedVersion}
       RETURNING id
@@ -250,7 +251,7 @@ export class KyselyCirculationRepository implements CirculationRepository {
         VALUES (
           ${copy.id}::uuid,
           ${copy.workId}::uuid,
-          ${copy.barcode},
+          ${copy.barcode.value},
           ${copy.status},
           ${copy.version},
           ${copy.createdAt}::timestamptz,
@@ -261,7 +262,7 @@ export class KyselyCirculationRepository implements CirculationRepository {
       return mapCopy(res.rows[0]!);
     } catch (error) {
       if (isPgUniqueViolation(error)) {
-        throw new ProblemError("barcode-taken", { detail: `Código de barras '${copy.barcode}' já cadastrado.` });
+        throw new ProblemError("barcode-taken", { detail: `Código de barras '${copy.barcode.value}' já cadastrado.` });
       }
       throw error;
     }
@@ -289,11 +290,11 @@ export class KyselyCirculationRepository implements CirculationRepository {
     return res.rows.map(mapCopy);
   }
 
-  async findCopyByBarcode(barcode: string): Promise<CopyProps | null> {
+  async findCopyByBarcode(barcode: Barcode): Promise<CopyProps | null> {
     const res = await sql<CopyRow>`
       SELECT id, work_id, barcode, status, version, created_at, updated_at
       FROM circulation.copies
-      WHERE barcode = ${barcode}
+      WHERE barcode = ${barcode.value}
       LIMIT 1
     `.execute(this.#trx);
     return res.rows[0] ? mapCopy(res.rows[0]) : null;
@@ -459,8 +460,8 @@ export class KyselyCirculationRepository implements CirculationRepository {
         ${fine.studentId}::uuid,
         ${fine.loanId}::uuid,
         ${fine.overdueDays},
-        ${fine.dailyRateCents},
-        ${fine.amountCents},
+        ${fine.dailyRate.cents},
+        ${fine.amount.cents},
         ${fine.status},
         ${fine.createdAt}::timestamptz,
         ${fine.paidAt}::timestamptz,

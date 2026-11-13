@@ -27,7 +27,7 @@ describe("Fatias do módulo Acervo (spec 002)", () => {
       { principal: librarian },
     );
 
-    expect(created.isbn).toBe("9780134494166");
+    expect(created.isbn?.value).toBe("9780134494166");
     expect(created.version).toBe(1);
     expect(audit.events[0]).toMatchObject({
       action: "work.created",
@@ -135,7 +135,7 @@ describe("Fatias do módulo Acervo (spec 002)", () => {
 
     const filtered = await mediator.send(searchWorks, { q: "evans", limit: 20 }, { principal: student });
     expect(filtered.items).toHaveLength(1);
-    expect(filtered.items[0]?.title).toBe("Livro 3");
+    expect(filtered.items[0]?.title.value).toBe("Livro 3");
 
     const seen: string[] = [];
     let cursor: string | undefined;
@@ -148,7 +148,7 @@ describe("Fatias do módulo Acervo (spec 002)", () => {
     expect(seen).toEqual([...createdIds].reverse());
 
     const single = await mediator.send(getWork, { workId: createdIds[0]! }, { principal: student });
-    expect(single.title).toBe("Livro 1");
+    expect(single.title.value).toBe("Livro 1");
 
     await expect(
       mediator.send(getWork, { workId: "0193b2c0-0000-7000-8000-000000009999" }, { principal: student }),

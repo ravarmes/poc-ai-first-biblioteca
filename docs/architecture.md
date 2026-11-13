@@ -99,9 +99,9 @@ classDiagram
     +id: UUIDv7
     +studentId: UUIDv7
     +loanId: UUIDv7
-    +dailyRateCents: number
+    +dailyRate: Money
     +overdueDays: number
-    +amountCents: number
+    +amount: Money
     +paidAt: Date?
   }
   class Hold {
@@ -123,7 +123,7 @@ classDiagram
   }
   class FineRateConfig {
     +id: string
-    +dailyRateCents: number
+    +dailyRate: Money
     +version: number
   }
   Student "1" -- "*" Loan : possui

@@ -1,7 +1,7 @@
 // Camada Anticorrupção (ACL) da Secretaria Acadêmica externa (ADR-0006, ADR-0023, spec 003).
 import { ProblemError } from "@biblioteca/core";
 import type { AcademicRegistryPort, AcademicStudent } from "../domain/ports.ts";
-import { normalizeRegistration } from "../domain/value-objects.ts";
+import { Email, StudentRegistration } from "../domain/value-objects.ts";
 
 /** Formato bruto vindo do sistema legado da Secretaria Acadêmica (não vaza para o domínio). */
 export interface RawSecretariaRecord {
@@ -15,29 +15,43 @@ export interface RawSecretariaRecord {
 export function translateAcademicStudent(raw: RawSecretariaRecord): AcademicStudent {
   const normalizedStatus = raw.sit_matricula.trim().toUpperCase();
   return {
-    registration: normalizeRegistration(raw.ra),
+    registration: StudentRegistration.of(raw.ra),
     name: raw.nome_civil.trim(),
-    email: raw.email_institucional.trim().toLowerCase(),
+    email: translateEmail(raw),
     enrollmentStatus: normalizedStatus === "MATRICULADO" ? "active" : "inactive",
     rawStatus: normalizedStatus,
     courseCode: raw.cod_curso.trim(),
   };
 }
 
+/**
+ * A Secretaria não padroniza maiúsculas no e-mail institucional: a tradução o grava todo em minúsculas, e o Email do
+ * domínio confere o formato. E-mail inválido é defeito do sistema de fora, não do pedido: não entra no domínio e
+ * volta como falha da integração, e não como erro de validação de um campo que o pedido nem tem.
+ */
+function translateEmail(raw: RawSecretariaRecord): Email {
+  try {
+    return Email.of(raw.email_institucional.toLowerCase());
+  } catch {
+    throw new ProblemError("internal-error", {
+      detail: `A Secretaria Acadêmica devolveu um e-mail institucional inválido para a matrícula '${raw.ra.trim()}'.`,
+    });
+  }
+}
+
 export async function requireActiveAcademicStudent(
   registry: AcademicRegistryPort,
-  registration: string,
+  registration: StudentRegistration,
 ): Promise<AcademicStudent> {
-  const normalized = normalizeRegistration(registration);
-  const student = await registry.findByRegistration(normalized);
+  const student = await registry.findByRegistration(registration);
   if (!student) {
     throw new ProblemError("not-found", {
-      detail: `Matrícula '${normalized}' não encontrada na Secretaria Acadêmica.`,
+      detail: `Matrícula '${registration.value}' não encontrada na Secretaria Acadêmica.`,
     });
   }
   if (student.enrollmentStatus !== "active") {
     throw new ProblemError("student-inactive", {
-      detail: `Matrícula '${normalized}' (${student.name}) está com situação '${student.rawStatus}' na Secretaria.`,
+      detail: `Matrícula '${registration.value}' (${student.name}) está com situação '${student.rawStatus}' na Secretaria.`,
     });
   }
   return student;
@@ -77,11 +91,11 @@ export class InMemoryAcademicRegistry implements AcademicRegistryPort {
   }
 
   putRawRecord(raw: RawSecretariaRecord): void {
-    this.#records.set(normalizeRegistration(raw.ra), raw);
+    this.#records.set(StudentRegistration.of(raw.ra).value, raw);
   }
 
-  async findByRegistration(registration: string): Promise<AcademicStudent | null> {
-    const raw = this.#records.get(normalizeRegistration(registration));
+  async findByRegistration(registration: StudentRegistration): Promise<AcademicStudent | null> {
+    const raw = this.#records.get(registration.value);
     return raw ? translateAcademicStudent(raw) : null;
   }
 }

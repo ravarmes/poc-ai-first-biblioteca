@@ -1,9 +1,9 @@
 import { ProblemError } from "@biblioteca/core";
 import { describe, expect, test } from "vitest";
 import { CATALOG_SCOPE } from "./work-repository.ts";
-import { Isbn, isValidIsbn10, isValidIsbn13, Work } from "./work.ts";
+import { Isbn, isValidIsbn10, isValidIsbn13, Work, WorkTitle } from "./work.ts";
 
-describe("Domínio do Acervo — Work & Isbn (spec 002)", () => {
+describe("Domínio do Acervo — Work, Isbn e WorkTitle (spec 002)", () => {
   test("define CATALOG_SCOPE como mod_catalog no schema catalog", () => {
     expect(CATALOG_SCOPE).toEqual({ role: "mod_catalog", searchPath: "catalog" });
   });
@@ -16,10 +16,10 @@ describe("Domínio do Acervo — Work & Isbn (spec 002)", () => {
       isbn: " 978-0-321-12521-7 ",
     });
 
-    expect(work.props.title).toBe("Domain-Driven Design");
+    expect(work.props.title.value).toBe("Domain-Driven Design");
     expect(work.props.authors).toEqual(["Eric Evans"]);
     expect(work.props.subject).toBe("Arquitetura de Software");
-    expect(work.props.isbn).toBe("9780321125217");
+    expect(work.props.isbn?.value).toBe("9780321125217");
     expect(work.props.version).toBe(1);
 
     const noIsbnFromBlank = Work.create({
@@ -30,8 +30,8 @@ describe("Domínio do Acervo — Work & Isbn (spec 002)", () => {
     });
     expect(noIsbnFromBlank.props.isbn).toBeNull();
 
-    expect(Isbn.parse("0-306-40615-2").value).toBe("0306406152");
-    expect(Isbn.parse("0-8044-2957-x").value).toBe("080442957X");
+    expect(Isbn.of("0-306-40615-2").value).toBe("0306406152");
+    expect(Isbn.of("0-8044-2957-x").value).toBe("080442957X");
     expect(isValidIsbn10("0306406152")).toBe(true);
     expect(isValidIsbn10("10306406152")).toBe(false);
     expect(isValidIsbn10("03064061529")).toBe(false);
@@ -51,20 +51,20 @@ describe("Domínio do Acervo — Work & Isbn (spec 002)", () => {
       throw new Error("Esperava ProblemError");
     };
 
-    const badIsbn13 = captureProblem(() => Isbn.parse("978-0-321-12521-0"));
+    const badIsbn13 = captureProblem(() => Isbn.of("978-0-321-12521-0"));
     expect(badIsbn13.detail).toBe("ISBN-13 inválido.");
     expect(badIsbn13.errors).toEqual([{ field: "isbn", message: "dígito verificador do ISBN-13 é inválido" }]);
 
-    const badIsbn10 = captureProblem(() => Isbn.parse("0306406159"));
+    const badIsbn10 = captureProblem(() => Isbn.of("0306406159"));
     expect(badIsbn10.detail).toBe("ISBN-10 inválido.");
     expect(badIsbn10.errors).toEqual([{ field: "isbn", message: "dígito verificador do ISBN-10 é inválido" }]);
 
-    const badLen = captureProblem(() => Isbn.parse("12345"));
+    const badLen = captureProblem(() => Isbn.of("12345"));
     expect(badLen.detail).toBe("ISBN inválido.");
     expect(badLen.errors).toEqual([{ field: "isbn", message: "ISBN deve ter 10 ou 13 dígitos" }]);
 
-    expect(() => Isbn.parse("abcdefghij")).toThrowError(ProblemError);
-    expect(() => Isbn.parse("978032112521A")).toThrowError(ProblemError);
+    expect(() => Isbn.of("abcdefghij")).toThrowError(ProblemError);
+    expect(() => Isbn.of("978032112521A")).toThrowError(ProblemError);
 
     expect(
       Work.create({ title: "A".repeat(200), authors: ["Autor"], subject: "S".repeat(120) }).props.subject,
@@ -160,7 +160,7 @@ describe("Domínio do Acervo — Work & Isbn (spec 002)", () => {
 
     // Recoloca ISBN e limpa via string vazia
     const withIsbn = edited.work.edit({ isbn: "0-306-40615-2" }, 2);
-    expect(withIsbn.work.props.isbn).toBe("0306406152");
+    expect(withIsbn.work.props.isbn?.equals(Isbn.of("0-306-40615-2"))).toBe(true);
     const clearedBlank = withIsbn.work.edit({ isbn: "   " }, 3);
     expect(clearedBlank.work.props.isbn).toBeNull();
 
@@ -174,5 +174,21 @@ describe("Domínio do Acervo — Work & Isbn (spec 002)", () => {
       );
       expect((err as ProblemError).currentVersion).toBe(2);
     }
+  });
+});
+
+describe("Objetos de valor do Acervo (sem identidade, iguais pelo valor, nascem válidos)", () => {
+  test("Isbn compara pelo valor já limpo: com ou sem hífen, é o mesmo ISBN", () => {
+    expect(Isbn.of("978-0-321-12521-7").equals(Isbn.of(" 9780321125217 "))).toBe(true);
+    expect(Isbn.of("0-306-40615-2").equals(Isbn.of("9780321125217"))).toBe(false);
+  });
+
+  test("WorkTitle nasce sem espaços nas pontas, recusa vazio e longo e compara pelo valor", () => {
+    expect(WorkTitle.of("  Domain-Driven Design  ").value).toBe("Domain-Driven Design");
+    expect(WorkTitle.of(" DDD ").equals(WorkTitle.of("DDD"))).toBe(true);
+    expect(WorkTitle.of("DDD").equals(WorkTitle.of("ddd"))).toBe(false);
+    expect(WorkTitle.of("A".repeat(200)).value).toHaveLength(200);
+    expect(() => WorkTitle.of("   ")).toThrowError(/título inválido/);
+    expect(() => WorkTitle.of("A".repeat(201))).toThrowError(/título excede o limite/);
   });
 });

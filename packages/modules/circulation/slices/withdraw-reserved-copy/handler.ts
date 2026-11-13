@@ -84,8 +84,8 @@ export function createWithdrawReservedCopyHandler(
         resourceId: savedHold.id,
         changes: {
           loanId: savedLoan.id,
-          barcode: savedCopy.barcode,
-          studentRegistration: studentProps.registration,
+          barcode: savedCopy.barcode.value,
+          studentRegistration: studentProps.registration.value,
           dueDate: savedLoan.dueDate,
         },
       });

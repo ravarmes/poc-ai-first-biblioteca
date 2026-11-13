@@ -1,6 +1,7 @@
 import { UpdateWorkRequestSchema, type WorkDto, WorkIdParamsSchema } from "@biblioteca/contract";
 import { type ApiRouter, type Mediator, parseInput, principalOf, readJsonBody } from "@biblioteca/core";
 import { createUpdateWorkHandler } from "./handler.ts";
+import { toWorkDto } from "../shared.ts";
 
 export function registerUpdateWorkEndpoint(
   app: ApiRouter,
@@ -18,7 +19,7 @@ export function registerUpdateWorkEndpoint(
         requestId: c.get("requestId"),
       },
     );
-    const updated: WorkDto = { ...saved, authors: [...saved.authors] };
+    const updated: WorkDto = toWorkDto(saved);
     return c.json(updated);
   });
 }

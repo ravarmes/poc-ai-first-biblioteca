@@ -323,10 +323,10 @@ describe("Fatias verticais do módulo Circulação (spec 003)", () => {
       changes: { fineAmountCents: 750, assignedHoldId: null },
     });
 
-    // Aluno bloqueado por multa pendente
+    // Aluno bloqueado por multa pendente: a recusa diz quanto ele deve (RN-01)
     await expect(
       mediator.send(lendCopy, { studentRegistration: "2026-0001", barcode: "EX-10" }, { principal: lib }),
-    ).rejects.toMatchObject({ code: "pending-fine" });
+    ).rejects.toMatchObject({ code: "pending-fine", detail: expect.stringContaining("R$ 7,50") });
 
     // Outro aluno tentando consultar resumo de Ana -> forbidden
     const brunoPrincipal = aPrincipal({ role: "student", studentRegistration: "2026-0002" });

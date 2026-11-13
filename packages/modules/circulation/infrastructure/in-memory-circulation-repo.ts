@@ -5,6 +5,7 @@ import type { HoldProps } from "../domain/hold.ts";
 import type { LoanProps } from "../domain/loan.ts";
 import type { CirculationRepository, CopyCountsByWork, ListCopiesFilter } from "../domain/ports.ts";
 import { type AcademicStudent, Student, type StudentParts, type StudentProps } from "../domain/student.ts";
+import type { Barcode, StudentRegistration } from "../domain/value-objects.ts";
 
 export class InMemoryCirculationRepository implements CirculationRepository {
   readonly students = new Map<string, StudentProps>();
@@ -29,9 +30,9 @@ export class InMemoryCirculationRepository implements CirculationRepository {
     return this.students.get(studentId) ?? null;
   }
 
-  async findStudentByRegistration(registration: string): Promise<StudentProps | null> {
+  async findStudentByRegistration(registration: StudentRegistration): Promise<StudentProps | null> {
     for (const s of this.students.values()) {
-      if (s.registration === registration) return s;
+      if (s.registration.equals(registration)) return s;
     }
     return null;
   }
@@ -75,8 +76,8 @@ export class InMemoryCirculationRepository implements CirculationRepository {
 
   async insertCopy(copy: CopyProps): Promise<CopyProps> {
     for (const c of this.copies.values()) {
-      if (c.barcode === copy.barcode) {
-        throw new ProblemError("barcode-taken", { detail: `Código de barras '${copy.barcode}' já cadastrado.` });
+      if (c.barcode.equals(copy.barcode)) {
+        throw new ProblemError("barcode-taken", { detail: `Código de barras '${copy.barcode.value}' já cadastrado.` });
       }
     }
     this.copies.set(copy.id, copy);
@@ -96,9 +97,9 @@ export class InMemoryCirculationRepository implements CirculationRepository {
     return out;
   }
 
-  async findCopyByBarcode(barcode: string): Promise<CopyProps | null> {
+  async findCopyByBarcode(barcode: Barcode): Promise<CopyProps | null> {
     for (const c of this.copies.values()) {
-      if (c.barcode === barcode) return c;
+      if (c.barcode.equals(barcode)) return c;
     }
     return null;
   }

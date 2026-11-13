@@ -9,10 +9,11 @@ import { CIRCULATION_SCOPE } from "./ports.ts";
 import { type AcademicStudent, Student } from "./student.ts";
 import {
   addUtcDaysIso,
+  Barcode,
+  Email,
   FixedClock,
-  formatCentsBrl,
-  normalizeBarcode,
-  normalizeRegistration,
+  Money,
+  StudentRegistration,
   SystemClock,
 } from "./value-objects.ts";
 
@@ -23,16 +24,17 @@ describe("Domínio puro de Circulação (invariantes, máquina de estados e cale
 
   test("[RN-01] [RN-02] [RN-03] agregado Student: a raiz empresta até 3 em aberto, recusa o 4º e a multa pendente e sincroniza nome/e-mail", () => {
     const academic: AcademicStudent = {
-      registration: "2026-0001",
+      registration: StudentRegistration.of("2026-0001"),
       name: "  Ana Silva  ",
-      email: "  ANA@ALU.EDU.BR  ",
+      email: Email.of("ana@alu.edu.br"),
       enrollmentStatus: "active",
       rawStatus: "MATRICULADO",
       courseCode: "CC",
     };
     const student = Student.fromAcademic(academic, "2026-11-10T10:00:00.000Z");
     expect(student.props.name).toBe("Ana Silva");
-    expect(student.props.email).toBe("ana@alu.edu.br");
+    expect(student.props.registration.value).toBe("2026-0001");
+    expect(student.props.email.value).toBe("ana@alu.edu.br");
 
     expect(student.openLoans).toHaveLength(0);
     expect(student.pendingFines).toHaveLength(0);
@@ -78,14 +80,14 @@ describe("Domínio puro de Circulação (invariantes, máquina de estados e cale
     const withTwo = Student.reconstitute(student.props, { openLoans: openLoans.slice(0, 2), pendingFines: [] });
     expect(withTwo.borrow(request("copy-4"), t1).student.openLoans).toHaveLength(3);
 
-    // Multa pendente, dentro do agregado, bloqueia empréstimo e renovação com detalhe explícito
+    // Multa pendente, dentro do agregado, bloqueia empréstimo e renovação, e a recusa diz quanto o aluno deve
     const pendingFine: FineProps = {
       id: "fine-1",
       studentId: student.props.id,
       loanId: first.loan.props.id,
       overdueDays: 2,
-      dailyRateCents: 100,
-      amountCents: 200,
+      dailyRate: Money.ofCents(100),
+      amount: Money.ofCents(200),
       status: "pending",
       createdAt: t1,
       paidAt: null,
@@ -93,13 +95,17 @@ describe("Domínio puro de Circulação (invariantes, máquina de estados e cale
     };
     const withFine = Student.reconstitute(student.props, { openLoans: [], pendingFines: [pendingFine] });
     expect(withFine.pendingFines.map((fine) => fine.props.id)).toEqual(["fine-1"]);
+    expect(student.pendingFineTotal().equals(Money.zero())).toBe(true);
+    const secondFine: FineProps = { ...pendingFine, id: "fine-2", overdueDays: 1, amount: Money.ofCents(150) };
+    const withTwoFines = Student.reconstitute(student.props, { openLoans: [], pendingFines: [pendingFine, secondFine] });
+    expect(withTwoFines.pendingFineTotal().format()).toBe("R$ 3,50");
     try {
       withFine.borrow(request("copy-9"), t1);
       expect.fail("Esperava pending-fine");
     } catch (err) {
       expect((err as ProblemError).code).toBe("pending-fine");
       expect((err as ProblemError).detail).toBe(
-        "O aluno Ana Silva (2026-0001) possui multa pendente e não pode retirar exemplares.",
+        "O aluno Ana Silva (2026-0001) possui multa pendente de R$ 2,00 e não pode retirar exemplares.",
       );
     }
     try {
@@ -108,7 +114,7 @@ describe("Domínio puro de Circulação (invariantes, máquina de estados e cale
     } catch (err) {
       expect((err as ProblemError).code).toBe("pending-fine");
       expect((err as ProblemError).detail).toBe(
-        "O aluno Ana Silva possui multa pendente; regularize antes de renovar.",
+        "O aluno Ana Silva possui multa pendente de R$ 2,00; regularize antes de renovar.",
       );
     }
     expect(() => student.ensureCanRenew()).not.toThrow();
@@ -123,20 +129,23 @@ describe("Domínio puro de Circulação (invariantes, máquina de estados e cale
     }
     expect(() => student.ensureCanPlaceHold(false)).not.toThrow();
 
-    // Sync com apenas espaços ou caixa diferente de e-mail não incrementa versão
-    const same = student.syncWithAcademic(academic, "2026-11-10T11:00:00.000Z");
+    // Sync com o mesmo e-mail (outro objeto, mesmo valor) e o nome com espaços não incrementa versão
+    const same = student.syncWithAcademic(
+      { ...academic, name: " Ana Silva ", email: Email.of(" ana@ALU.EDU.BR ") },
+      "2026-11-10T11:00:00.000Z",
+    );
     expect(same.props.version).toBe(1);
 
-    // Sync alterando apenas o e-mail incrementa versão e normaliza para minúsculas
+    // Sync alterando apenas o e-mail incrementa versão
     const emailUpdated = same.syncWithAcademic(
-      { ...academic, email: " ANA.NOVO@ALU.EDU.BR " },
+      { ...academic, email: Email.of("ana.novo@alu.edu.br") },
       "2026-11-10T11:30:00.000Z",
     );
     expect(emailUpdated.props.version).toBe(2);
-    expect(emailUpdated.props.email).toBe("ana.novo@alu.edu.br");
+    expect(emailUpdated.props.email.value).toBe("ana.novo@alu.edu.br");
 
     const nameUpdated = emailUpdated.syncWithAcademic(
-      { ...academic, email: "ana.novo@alu.edu.br", name: "Ana Maria Silva" },
+      { ...academic, email: Email.of("ana.novo@alu.edu.br"), name: "Ana Maria Silva" },
       "2026-11-10T12:00:00.000Z",
     );
     expect(nameUpdated.props.version).toBe(3);
@@ -153,7 +162,7 @@ describe("Domínio puro de Circulação (invariantes, máquina de estados e cale
   test("[RN-02] [RN-07] máquina de estados de Copy incrementa versão em toda transição e rejeita estados inválidos", () => {
     const t0 = "2026-11-10T10:00:00.000Z";
     const copy = Copy.register({ workId: newUuidV7(), barcode: " ex-001 " }, t0);
-    expect(copy.props.barcode).toBe("EX-001");
+    expect(copy.props.barcode.equals(Barcode.of("EX-001"))).toBe(true);
     expect(copy.props.status).toBe("available");
     expect(copy.props.version).toBe(1);
 
@@ -243,11 +252,11 @@ describe("Domínio puro de Circulação (invariantes, máquina de estados e cale
       }
     }
 
-    expect(calculateOverdueFine(1, 1)).toBe(1);
-    expect(calculateOverdueFine(3, 100)).toBe(300);
-    expect(calculateOverdueFine(1, 250)).toBe(250);
-    expect(() => calculateOverdueFine(0, 100)).toThrowError(/positivos/);
-    expect(() => calculateOverdueFine(2, 0)).toThrowError(/positivo/);
+    expect(calculateOverdueFine(1, Money.ofCents(1)).cents).toBe(1);
+    expect(calculateOverdueFine(3, Money.ofCents(100)).cents).toBe(300);
+    expect(calculateOverdueFine(1, Money.ofCents(250)).cents).toBe(250);
+    expect(() => calculateOverdueFine(0, Money.ofCents(100))).toThrowError(/positivos/);
+    expect(() => calculateOverdueFine(2, Money.zero())).toThrowError(/positivo/);
 
     expect(
       Fine.createIfOverdue({
@@ -255,7 +264,7 @@ describe("Domínio puro de Circulação (invariantes, máquina de estados e cale
         loanId: newUuidV7(),
         dueDateYmd: "2026-11-30",
         returnedDateYmd: "2026-11-30",
-        dailyRateCents: 100,
+        dailyRate: Money.ofCents(100),
         nowIso: "2026-11-30T15:00:00.000Z",
       }),
     ).toBeNull();
@@ -265,11 +274,11 @@ describe("Domínio puro de Circulação (invariantes, máquina de estados e cale
       loanId: newUuidV7(),
       dueDateYmd: "2026-11-30",
       returnedDateYmd: "2026-12-03",
-      dailyRateCents: 250,
+      dailyRate: Money.ofCents(250),
       nowIso: "2026-12-03T15:00:00.000Z",
     })!;
     expect(fine.props.overdueDays).toBe(3);
-    expect(fine.props.amountCents).toBe(750);
+    expect(fine.props.amount.equals(Money.ofCents(750))).toBe(true);
     expect(() => fine.pay(2, "2026-12-04T10:00:00.000Z")).toThrowError(/atualizada/);
 
     const paid = fine.pay(1, "2026-12-04T10:00:00.000Z");
@@ -336,35 +345,7 @@ describe("Domínio puro de Circulação (invariantes, máquina de estados e cale
     expect(readyNoExpiry.expire(2, "2026-11-13T12:00:00.001Z").props.status).toBe("expired");
   });
 
-  test("normalizações com âncoras, SystemClock, FixedClock e formatação monetária", () => {
-    expect(normalizeBarcode(" bib-10 ")).toBe("BIB-10");
-    for (const badCode of ["ab", "!EX-01", "EX-01!"]) {
-      try {
-        normalizeBarcode(badCode);
-        expect.fail(`Deveria rejeitar ${badCode}`);
-      } catch (err) {
-        const p = err as ProblemError;
-        expect(p.detail).toBe("Código de barras inválido.");
-        expect(p.errors).toEqual([
-          { field: "barcode", message: "deve ter entre 4 e 32 caracteres alfanuméricos ou hífen" },
-        ]);
-      }
-    }
-
-    expect(normalizeRegistration(" 2026-0001 ")).toBe("2026-0001");
-    for (const badReg of ["1", "!2026-01", "2026_01!"]) {
-      try {
-        normalizeRegistration(badReg);
-        expect.fail(`Deveria rejeitar ${badReg}`);
-      } catch (err) {
-        const p = err as ProblemError;
-        expect(p.detail).toBe("Matrícula acadêmica inválida.");
-        expect(p.errors).toEqual([
-          { field: "studentRegistration", message: "deve ter entre 3 e 32 caracteres alfanuméricos ou hífen" },
-        ]);
-      }
-    }
-
+  test("addUtcDaysIso, SystemClock e FixedClock", () => {
     expect(addUtcDaysIso("2026-11-10T00:00:00.000Z", 3)).toBe("2026-11-13T00:00:00.000Z");
     try {
       addUtcDaysIso("nao-e-iso", 3);
@@ -373,8 +354,6 @@ describe("Domínio puro de Circulação (invariantes, máquina de estados e cale
       expect((err as ProblemError).code).toBe("internal-error");
       expect((err as ProblemError).detail).toBe("Data ISO inválida no cálculo de prazo: nao-e-iso");
     }
-
-    expect(formatCentsBrl(350)).toBe("R$ 3,50");
 
     const sysClock = new SystemClock();
     const sysIso = sysClock.nowIso();
@@ -387,5 +366,82 @@ describe("Domínio puro de Circulação (invariantes, máquina de estados e cale
     expect(clock.todayYmd()).toBe("2026-11-15");
     clock.setNow("2026-11-20T12:00:00.000Z");
     expect(clock.todayYmd()).toBe("2026-11-20");
+  });
+});
+
+function problemOf(fn: () => unknown): ProblemError {
+  try {
+    fn();
+  } catch (err) {
+    return err as ProblemError;
+  }
+  throw new Error("Esperava um ProblemError");
+}
+
+describe("Objetos de valor de Circulação (sem identidade, iguais pelo valor, nascem válidos)", () => {
+  test("Barcode nasce sem espaços e em maiúsculas, recusa o inválido e compara pelo valor", () => {
+    expect(Barcode.of(" bib-10 ").value).toBe("BIB-10");
+    expect(Barcode.of(" bib-10 ").equals(Barcode.of("BIB-10"))).toBe(true);
+    expect(Barcode.of("BIB-10").equals(Barcode.of("BIB-11"))).toBe(false);
+    for (const bad of ["ab", "!EX-01", "EX-01!"]) {
+      const problem = problemOf(() => Barcode.of(bad));
+      expect(problem.code).toBe("validation-error");
+      expect(problem.detail).toBe("Código de barras inválido.");
+      expect(problem.errors).toEqual([
+        { field: "barcode", message: "deve ter entre 4 e 32 caracteres alfanuméricos ou hífen" },
+      ]);
+    }
+  });
+
+  test("StudentRegistration nasce sem espaços, recusa o inválido e compara pelo valor", () => {
+    expect(StudentRegistration.of(" 2026-0001 ").value).toBe("2026-0001");
+    expect(StudentRegistration.of(" 2026-0001 ").equals(StudentRegistration.of("2026-0001"))).toBe(true);
+    expect(StudentRegistration.of("2026-0001").equals(StudentRegistration.of("2026-0002"))).toBe(false);
+    for (const bad of ["1", "!2026-01", "2026_01!"]) {
+      const problem = problemOf(() => StudentRegistration.of(bad));
+      expect(problem.code).toBe("validation-error");
+      expect(problem.detail).toBe("Matrícula acadêmica inválida.");
+      expect(problem.errors).toEqual([
+        { field: "studentRegistration", message: "deve ter entre 3 e 32 caracteres alfanuméricos ou hífen" },
+      ]);
+    }
+  });
+
+  test("Email nasce sem espaços e com o domínio em minúsculas, recusa o inválido e compara pelo valor", () => {
+    expect(Email.of(" marta@Escola.Example ").value).toBe("marta@escola.example");
+    // Só o domínio vai para minúsculas: a parte antes do @ fica como veio
+    expect(Email.of("Ana.SILVA@ALU.EDU.BR").value).toBe("Ana.SILVA@alu.edu.br");
+    expect(Email.of(" marta@Escola.Example ").equals(Email.of("marta@escola.example"))).toBe(true);
+    expect(Email.of("MARTA@escola.example").equals(Email.of("marta@escola.example"))).toBe(false);
+    const bads = [
+      "marta.escola.example",
+      "marta@escola",
+      "@escola.example",
+      "marta silva@escola.example",
+      "marta@escola.example x",
+    ];
+    for (const bad of bads) {
+      const problem = problemOf(() => Email.of(bad));
+      expect(problem.code).toBe("validation-error");
+      expect(problem.detail).toBe("E-mail inválido.");
+      expect(problem.errors).toEqual([{ field: "email", message: "deve ter um @ e um domínio com ponto, sem espaços" }]);
+    }
+  });
+
+  test("Money guarda centavos inteiros, soma, multiplica, compara pelo valor e se escreve em reais", () => {
+    expect(Money.ofCents(0).cents).toBe(0);
+    expect(Money.zero().equals(Money.ofCents(0))).toBe(true);
+    expect(Money.ofCents(250).plus(Money.ofCents(100)).cents).toBe(350);
+    expect(Money.ofCents(250).times(3).equals(Money.ofCents(750))).toBe(true);
+    expect(Money.ofCents(250).equals(Money.ofCents(251))).toBe(false);
+    expect(Money.ofCents(350).format()).toBe("R$ 3,50");
+    expect(Money.ofCents(5).format()).toBe("R$ 0,05");
+    for (const bad of [-1, 1.5]) {
+      const problem = problemOf(() => Money.ofCents(bad));
+      expect(problem.code).toBe("validation-error");
+      expect(problem.detail).toBe("Valor em dinheiro inválido: use centavos inteiros, sem valor negativo.");
+    }
+    // Multiplicar por fração daria fração de centavo: não nasce
+    expect(() => Money.ofCents(1).times(1.5)).toThrowError(/centavos inteiros/);
   });
 });

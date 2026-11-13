@@ -1,7 +1,7 @@
 // Repositório PostgreSQL (schema catalog, role mod_catalog) via Kysely.
 import { decodeCursor, type PageResult, ProblemError, toPage, typed } from "@biblioteca/core";
 import { type Kysely, sql } from "kysely";
-import type { WorkProps } from "../domain/work.ts";
+import { Isbn, type WorkProps, WorkTitle } from "../domain/work.ts";
 import type { SearchWorksFilter, WorkRepository } from "../domain/work-repository.ts";
 
 export type WorkRepositoryFactory = (trx: Kysely<unknown>) => WorkRepository;
@@ -30,10 +30,10 @@ function mapRow(row: WorkRow): WorkProps {
     typeof row.authors === "string" ? (JSON.parse(row.authors) as string[]) : (row.authors as string[]);
   return {
     id: row.id,
-    title: row.title,
+    title: WorkTitle.of(row.title),
     authors: parsedAuthors,
     subject: row.subject,
-    isbn: row.isbn,
+    isbn: row.isbn === null ? null : Isbn.of(row.isbn),
     version: row.version,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
@@ -61,10 +61,10 @@ export class KyselyWorkRepository implements WorkRepository {
         INSERT INTO catalog.works (id, title, authors, subject, isbn, version, created_at, updated_at)
         VALUES (
           ${work.id}::uuid,
-          ${work.title},
+          ${work.title.value},
           ${JSON.stringify(work.authors)}::jsonb,
           ${work.subject},
-          ${work.isbn},
+          ${work.isbn?.value ?? null},
           ${work.version},
           ${work.createdAt}::timestamptz,
           ${work.updatedAt}::timestamptz
@@ -74,7 +74,7 @@ export class KyselyWorkRepository implements WorkRepository {
       return mapRow(res.rows[0]!);
     } catch (error) {
       if (isPgUniqueViolation(error)) {
-        throw new ProblemError("isbn-taken", { detail: `Já existe obra cadastrada com o ISBN ${work.isbn}.` });
+        throw new ProblemError("isbn-taken", { detail: `Já existe obra cadastrada com o ISBN ${work.isbn?.value}.` });
       }
       throw error;
     }
@@ -85,10 +85,10 @@ export class KyselyWorkRepository implements WorkRepository {
       const res = await sql<WorkRow>`
         UPDATE catalog.works
         SET
-          title = ${work.title},
+          title = ${work.title.value},
           authors = ${JSON.stringify(work.authors)}::jsonb,
           subject = ${work.subject},
-          isbn = ${work.isbn},
+          isbn = ${work.isbn?.value ?? null},
           version = version + 1,
           updated_at = ${work.updatedAt}::timestamptz
         WHERE id = ${work.id}::uuid AND version = ${expectedVersion}
@@ -108,7 +108,7 @@ export class KyselyWorkRepository implements WorkRepository {
       });
     } catch (error) {
       if (isPgUniqueViolation(error)) {
-        throw new ProblemError("isbn-taken", { detail: `Já existe outra obra com o ISBN ${work.isbn}.` });
+        throw new ProblemError("isbn-taken", { detail: `Já existe outra obra com o ISBN ${work.isbn?.value}.` });
       }
       throw error;
     }

@@ -1,25 +1,26 @@
 // Domínio puro do Acervo (spec 002, ADR-0005, ADR-0021, ADR-0025).
+// Isbn e WorkTitle são objetos de valor: sem identidade, iguais pelo valor (`equals`), imutáveis e nascidos
+// válidos pela fábrica `of`; o construtor é privado e o `brand` impede que o TypeScript troque um pelo outro.
 import { newUuidV7, ProblemError } from "@biblioteca/core";
 
 export interface WorkProps {
   readonly id: string;
-  readonly title: string;
+  readonly title: WorkTitle;
   readonly authors: readonly string[];
   readonly subject: string;
-  readonly isbn: string | null;
+  readonly isbn: Isbn | null;
   readonly version: number;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
 
+/** ISBN da obra: sem espaços nem hífens, com o dígito verificador do ISBN-10 ou do ISBN-13 conferido. */
 export class Isbn {
-  readonly value: string;
+  private readonly brand = "Isbn";
 
-  private constructor(normalized: string) {
-    this.value = normalized;
-  }
+  private constructor(readonly value: string) {}
 
-  static parse(raw: string): Isbn {
+  static of(raw: string): Isbn {
     const cleaned = raw.replace(/[\s-]+/g, "").toUpperCase();
     if (cleaned.length === 10) {
       if (!isValidIsbn10(cleaned)) {
@@ -43,6 +44,25 @@ export class Isbn {
       detail: "ISBN inválido.",
       errors: [{ field: "isbn", message: "ISBN deve ter 10 ou 13 dígitos" }],
     });
+  }
+
+  equals(other: Isbn): boolean {
+    return other.value === this.value;
+  }
+}
+
+/** Título da obra: sem espaços nas pontas, com 1 a 200 caracteres. */
+export class WorkTitle {
+  private readonly brand = "WorkTitle";
+
+  private constructor(readonly value: string) {}
+
+  static of(raw: string): WorkTitle {
+    return new WorkTitle(normalizeText(raw, "title", 200, "título"));
+  }
+
+  equals(other: WorkTitle): boolean {
+    return other.value === this.value;
   }
 }
 
@@ -99,6 +119,15 @@ function arraysEqual(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((item, idx) => item === b[idx]);
 }
 
+function sameIsbn(a: Isbn | null, b: Isbn | null): boolean {
+  return a === null || b === null ? a === b : a.equals(b);
+}
+
+/** ISBN em branco vira "sem ISBN"; o resto passa pelo objeto de valor. */
+function isbnOrNull(raw: string | null | undefined): Isbn | null {
+  return raw === undefined || raw === null || raw.trim() === "" ? null : Isbn.of(raw);
+}
+
 export interface EditWorkInput {
   readonly title?: string;
   readonly authors?: readonly string[];
@@ -126,13 +155,10 @@ export class Work {
     },
     nowIso: string = new Date().toISOString(),
   ): Work {
-    const title = normalizeText(input.title, "title", 200, "título");
+    const title = WorkTitle.of(input.title);
     const authors = normalizeAuthors(input.authors);
     const subject = normalizeText(input.subject, "subject", 120, "assunto");
-    const isbn =
-      input.isbn === undefined || input.isbn === null || input.isbn.trim() === ""
-        ? null
-        : Isbn.parse(input.isbn).value;
+    const isbn = isbnOrNull(input.isbn);
 
     return new Work({
       id: newUuidV7(),
@@ -162,23 +188,25 @@ export class Work {
       });
     }
 
-    const nextTitle = patch.title !== undefined ? normalizeText(patch.title, "title", 200, "título") : this.props.title;
+    const nextTitle = patch.title !== undefined ? WorkTitle.of(patch.title) : this.props.title;
     const nextAuthors = patch.authors !== undefined ? normalizeAuthors(patch.authors) : [...this.props.authors];
     const nextSubject =
       patch.subject !== undefined ? normalizeText(patch.subject, "subject", 120, "assunto") : this.props.subject;
 
-    let nextIsbn = this.props.isbn;
-    if (patch.isbn !== undefined) {
-      nextIsbn = patch.isbn === null || patch.isbn.trim() === "" ? null : Isbn.parse(patch.isbn).value;
-    }
+    const nextIsbn = patch.isbn !== undefined ? isbnOrNull(patch.isbn) : this.props.isbn;
 
+    // O registro de mudanças vai para a auditoria: leva o valor primitivo, não o objeto de valor
     const changes: Record<string, { before: unknown; after: unknown }> = {};
-    if (nextTitle !== this.props.title) changes["title"] = { before: this.props.title, after: nextTitle };
+    if (!nextTitle.equals(this.props.title)) {
+      changes["title"] = { before: this.props.title.value, after: nextTitle.value };
+    }
     if (!arraysEqual(nextAuthors, this.props.authors)) {
       changes["authors"] = { before: this.props.authors, after: nextAuthors };
     }
     if (nextSubject !== this.props.subject) changes["subject"] = { before: this.props.subject, after: nextSubject };
-    if (nextIsbn !== this.props.isbn) changes["isbn"] = { before: this.props.isbn, after: nextIsbn };
+    if (!sameIsbn(nextIsbn, this.props.isbn)) {
+      changes["isbn"] = { before: this.props.isbn?.value ?? null, after: nextIsbn?.value ?? null };
+    }
 
     const changed = Object.keys(changes).length > 0;
     if (!changed) {

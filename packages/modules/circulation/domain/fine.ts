@@ -1,29 +1,31 @@
 // Entidade Multa (Fine) e cálculo determinístico por dias em atraso (RN-03, RN-04, RN-05).
-import type { FineDto, FineStatus } from "@biblioteca/contract";
+import type { FineStatus } from "@biblioteca/contract";
 import { newUuidV7, ProblemError } from "@biblioteca/core";
 import { countOverdueDays } from "./calendar.ts";
+import type { Money } from "./value-objects.ts";
 
 export interface FineProps {
   readonly id: string;
   readonly studentId: string;
   readonly loanId: string;
   readonly overdueDays: number;
-  readonly dailyRateCents: number;
-  readonly amountCents: number;
+  readonly dailyRate: Money;
+  readonly amount: Money;
   readonly status: FineStatus;
   readonly createdAt: string;
   readonly paidAt: string | null;
   readonly version: number;
 }
 
-export function calculateOverdueFine(overdueDays: number, dailyRateCents: number): number {
+/** A multa é o valor diário vezes os dias em atraso (RN-03, RN-04). */
+export function calculateOverdueFine(overdueDays: number, dailyRate: Money): Money {
   if (!Number.isInteger(overdueDays) || overdueDays < 1) {
     throw new ProblemError("validation-error", { detail: "Dias em atraso devem ser inteiros positivos." });
   }
-  if (!Number.isInteger(dailyRateCents) || dailyRateCents < 1) {
+  if (dailyRate.cents < 1) {
     throw new ProblemError("validation-error", { detail: "Valor diário da multa deve ser inteiro positivo em centavos." });
   }
-  return overdueDays * dailyRateCents;
+  return dailyRate.times(overdueDays);
 }
 
 export class Fine {
@@ -38,21 +40,21 @@ export class Fine {
     loanId: string;
     dueDateYmd: string;
     returnedDateYmd: string;
-    dailyRateCents: number;
+    dailyRate: Money;
     nowIso: string;
   }): Fine | null {
     const overdueDays = countOverdueDays(input.dueDateYmd, input.returnedDateYmd);
     if (overdueDays <= 0) {
       return null;
     }
-    const amountCents = calculateOverdueFine(overdueDays, input.dailyRateCents);
+    const amount = calculateOverdueFine(overdueDays, input.dailyRate);
     return new Fine({
       id: newUuidV7(),
       studentId: input.studentId,
       loanId: input.loanId,
       overdueDays,
-      dailyRateCents: input.dailyRateCents,
-      amountCents,
+      dailyRate: input.dailyRate,
+      amount,
       status: "pending",
       createdAt: input.nowIso,
       paidAt: null,
@@ -64,7 +66,7 @@ export class Fine {
     return new Fine(props);
   }
 
-  get props(): FineDto {
+  get props(): FineProps {
     return this.#props;
   }
 

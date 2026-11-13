@@ -1,6 +1,7 @@
 // Fachada pública do módulo Acervo (ADR-0009, ADR-0015): em processo ou via HTTP no modo separado.
 import type { InternalWorkSummary } from "@biblioteca/contract";
 import { type AnyDatabase, ProblemError, runInUnitOfWork } from "@biblioteca/core";
+import type { WorkProps } from "../domain/work.ts";
 import { CATALOG_SCOPE } from "../domain/work-repository.ts";
 import { kyselyWorkRepository } from "../infrastructure/kysely-work-repository.ts";
 
@@ -9,19 +10,13 @@ export interface CatalogFacade {
   getWorksByIds(workIds: readonly string[]): Promise<ReadonlyMap<string, InternalWorkSummary>>;
 }
 
-function toSummary(work: {
-  id: string;
-  title: string;
-  authors: readonly string[];
-  subject: string;
-  isbn: string | null;
-}): InternalWorkSummary {
+function toSummary(work: WorkProps): InternalWorkSummary {
   return {
     id: work.id,
-    title: work.title,
+    title: work.title.value,
     authors: [...work.authors],
     subject: work.subject,
-    isbn: work.isbn,
+    isbn: work.isbn?.value ?? null,
   };
 }
 

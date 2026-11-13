@@ -37,7 +37,7 @@ export function createRegisterCopyHandler(
         resourceId: saved.id,
         changes: {
           workId: saved.workId,
-          barcode: saved.barcode,
+          barcode: saved.barcode.value,
           status: saved.status,
         },
       });

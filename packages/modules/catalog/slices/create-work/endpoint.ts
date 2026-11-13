@@ -1,6 +1,7 @@
 import { CreateWorkRequestSchema, type WorkDto } from "@biblioteca/contract";
 import { type ApiRouter, type Mediator, parseInput, principalOf, readJsonBody } from "@biblioteca/core";
 import { createCreateWorkHandler } from "./handler.ts";
+import { toWorkDto } from "../shared.ts";
 
 export function registerCreateWorkEndpoint(
   app: ApiRouter,
@@ -13,7 +14,7 @@ export function registerCreateWorkEndpoint(
       principal: principalOf(c),
       requestId: c.get("requestId"),
     });
-    const created: WorkDto = { ...saved, authors: [...saved.authors] };
+    const created: WorkDto = toWorkDto(saved);
     return c.json(created, 201, {
       Location: `/api/v1/catalog/works/${created.id}`,
     });

@@ -6,14 +6,15 @@
 import { newUuidV7, ProblemError } from "@biblioteca/core";
 import { Fine, type FineProps } from "./fine.ts";
 import { Loan, type LoanProps } from "./loan.ts";
-import { normalizeRegistration } from "./value-objects.ts";
+import { type Email, Money, type StudentRegistration } from "./value-objects.ts";
 
 export const STUDENT_LOAN_LIMIT = 3;
 
+/** O aluno como a Secretaria o descreve, já traduzido pela camada anticorrupção para os tipos do domínio. */
 export interface AcademicStudent {
-  readonly registration: string;
+  readonly registration: StudentRegistration;
   readonly name: string;
-  readonly email: string;
+  readonly email: Email;
   readonly enrollmentStatus: "active" | "inactive";
   readonly rawStatus: string;
   readonly courseCode: string;
@@ -21,9 +22,9 @@ export interface AcademicStudent {
 
 export interface StudentProps {
   readonly id: string;
-  readonly registration: string;
+  readonly registration: StudentRegistration;
   readonly name: string;
-  readonly email: string;
+  readonly email: Email;
   readonly version: number;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -59,9 +60,9 @@ export class Student {
     return new Student(
       {
         id: newUuidV7(),
-        registration: normalizeRegistration(academic.registration),
+        registration: academic.registration,
         name: academic.name.trim(),
-        email: academic.email.trim().toLowerCase(),
+        email: academic.email,
         version: 1,
         createdAt: nowIso,
         updatedAt: nowIso,
@@ -92,10 +93,15 @@ export class Student {
     return this.#pendingFines;
   }
 
+  /** Quanto o aluno deve: a soma das multas pendentes. */
+  pendingFineTotal(): Money {
+    return this.#pendingFines.reduce((total, fine) => total.plus(fine.props.amount), Money.zero());
+  }
+
   syncWithAcademic(academic: AcademicStudent, nowIso: string): Student {
     const nextName = academic.name.trim();
-    const nextEmail = academic.email.trim().toLowerCase();
-    if (nextName === this.#props.name && nextEmail === this.#props.email) {
+    const nextEmail = academic.email;
+    if (nextName === this.#props.name && nextEmail.equals(this.#props.email)) {
       return this;
     }
     return new Student(
@@ -112,14 +118,14 @@ export class Student {
   }
 
   /**
-   * Empresta um exemplar ao aluno: com multa pendente, recusa (RN-01); com 3 empréstimos em aberto, recusa
-   * (RN-02). Senão, abre o empréstimo dentro do agregado e sobe a versão. Devolve o Student como fica e o
-   * empréstimo novo; nada é gravado aqui (quem grava é o repositório, com o Student inteiro).
+   * Empresta um exemplar ao aluno: com multa pendente, recusa e diz quanto ele deve (RN-01); com 3 empréstimos
+   * em aberto, recusa (RN-02). Senão, abre o empréstimo dentro do agregado e sobe a versão. Devolve o Student
+   * como fica e o empréstimo novo; nada é gravado aqui (quem grava é o repositório, com o Student inteiro).
    */
   borrow(request: BorrowRequest, nowIso: string): { readonly student: Student; readonly loan: Loan } {
     if (this.#pendingFines.length > 0) {
       throw new ProblemError("pending-fine", {
-        detail: `O aluno ${this.#props.name} (${this.#props.registration}) possui multa pendente e não pode retirar exemplares.`,
+        detail: `O aluno ${this.#props.name} (${this.#props.registration.value}) possui multa pendente de ${this.pendingFineTotal().format()} e não pode retirar exemplares.`,
       });
     }
     if (this.#openLoans.length >= STUDENT_LOAN_LIMIT) {
@@ -142,11 +148,11 @@ export class Student {
     return { student, loan };
   }
 
-  /** Renovar pede o aluno sem multa pendente (RN-01). */
+  /** Renovar pede o aluno sem multa pendente (RN-01); a recusa diz quanto ele deve. */
   ensureCanRenew(): void {
     if (this.#pendingFines.length > 0) {
       throw new ProblemError("pending-fine", {
-        detail: `O aluno ${this.#props.name} possui multa pendente; regularize antes de renovar.`,
+        detail: `O aluno ${this.#props.name} possui multa pendente de ${this.pendingFineTotal().format()}; regularize antes de renovar.`,
       });
     }
   }
@@ -154,7 +160,7 @@ export class Student {
   ensureCanPlaceHold(hasActiveHoldForWork: boolean): void {
     if (hasActiveHoldForWork) {
       throw new ProblemError("hold-already-exists", {
-        detail: `O aluno ${this.#props.registration} já possui uma reserva ativa para esta obra.`,
+        detail: `O aluno ${this.#props.registration.value} já possui uma reserva ativa para esta obra.`,
       });
     }
   }
