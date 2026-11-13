@@ -150,7 +150,7 @@ pre.tree{margin:0;font:12.5px/1.5 var(--mono);background:var(--soft);border-radi
   <div id="nav"></div>
   <div class="foot">
     <span>Navegue com <span class="kbd">←</span> <span class="kbd">→</span> ou pelo menu.</span>
-    <span>Fonte: <a href="architecture.md">architecture.md</a> · <a href="adr/README.md">ADRs</a> · <a href="../specs/README.md">Specs</a></span>
+    <span>Fonte: <a href="https://github.com/ravarmes/poc-ai-first-biblioteca/blob/main/docs/architecture.md" target="_blank" rel="noopener">architecture.md</a> · <a href="https://github.com/ravarmes/poc-ai-first-biblioteca/blob/main/docs/adr/README.md" target="_blank" rel="noopener">ADRs</a> · <a href="https://github.com/ravarmes/poc-ai-first-biblioteca/blob/main/specs/README.md" target="_blank" rel="noopener">Specs</a></span>
     <button class="themebtn" id="theme" type="button">Alternar tema</button>
   </div>
 </nav>
@@ -191,7 +191,9 @@ const ADR = {
   "0030":"0030-idioma-dos-identificadores-e-documentacao"
 };
 const esc = t => String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-const adrLinks = ids => `<div class="adr">${ids.map(i=>`<a href="adr/${ADR[i]}.md" title="ADR-${i}">ADR-${i}</a>`).join("")}</div>`;
+// As ADRs abrem no GitHub, que mostra o Markdown formatado (no GitHub Pages, o .md sairia cru).
+const ADR_BASE = "https://github.com/ravarmes/poc-ai-first-biblioteca/blob/main/docs/adr/";
+const adrLinks = ids => `<div class="adr">${ids.map(i=>`<a href="${ADR_BASE}${ADR[i]}.md" target="_blank" rel="noopener" title="ADR-${i}">ADR-${i}</a>`).join("")}</div>`;
 
 /* ---------- Matriz módulos × camadas ---------- */
 const MODS = [

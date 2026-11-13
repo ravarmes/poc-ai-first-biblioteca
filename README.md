@@ -23,25 +23,24 @@ As regras de negócio (RN-01 a RN-08), o mapa de contexto e a máquina de estado
 
 ## Veja a arquitetura
 
-O GitHub mostra os arquivos `.html` como código. Para vê-los como página, abra-os no navegador a partir do seu clone (ou
-do Codespaces), ou pelo endereço publicado: [a definir: endereço do GitHub Pages].
+As duas páginas estão publicadas no GitHub Pages: os links abaixo abrem a página. Os arquivos delas ficam em `docs/`.
 
-### O portal da arquitetura: [`docs/architecture.html`](docs/architecture.html)
+### [O portal da arquitetura](https://ravarmes.github.io/poc-ai-first-biblioteca/architecture.html)
 
 Os módulos são colunas, e o núcleo (`packages/core`) atravessa todos. A página abre na matriz módulos × camadas (clique
 numa célula para ver o que ela contém) e tem sete quadros: visão geral, monorepo, dentro de um módulo, pipeline do
 mediador, fronteira no banco, prova de extração e o código por contexto.
 
-[![Portal da arquitetura: a matriz módulos × camadas](docs/img/portal-da-arquitetura.png)](docs/architecture.html)
+[![Portal da arquitetura: a matriz módulos × camadas](docs/img/portal-da-arquitetura.png)](https://ravarmes.github.io/poc-ai-first-biblioteca/architecture.html)
 
-### O código por contexto: [`docs/architecture/07-codigo-por-contexto.html`](docs/architecture/07-codigo-por-contexto.html)
+### [O código por contexto](https://ravarmes.github.io/poc-ai-first-biblioteca/architecture/07-codigo-por-contexto.html)
 
 Os dois cortes do monólito modular no código: cada contexto vira um módulo, e cada caso de uso, uma fatia dentro dele. A
 página mostra as pastas e as classes de cada contexto, quem chama quem e o agregado `Student`. Os conceitos de DDD dos
 encontros (entidade, objeto de valor, agregado, invariante, regra de dependência) aparecem lado a lado com o código,
 marcados `confere`, `parcial` ou `diverge`. Ela é também o quadro 07 do portal.
 
-[![Os dois cortes: contexto delimitado = módulo = schema + role; fatia = caso de uso](docs/img/codigo-por-contexto.png)](docs/architecture/07-codigo-por-contexto.html)
+[![Os dois cortes: contexto delimitado = módulo = schema + role; fatia = caso de uso](docs/img/codigo-por-contexto.png)](https://ravarmes.github.io/poc-ai-first-biblioteca/architecture/07-codigo-por-contexto.html)
 
 ## Rode na sua máquina
 
@@ -123,8 +122,8 @@ dentro do processo da API, atrás da porta que o domínio declara, como pede o p
 | Encontro | Leia | Veja no código |
 |---|---|---|
 | 1 · DDD estratégico e requisitos | [`docs/dominio.md`](docs/dominio.md) | os módulos em [`packages/modules/`](packages/modules/) e a camada anticorrupção em [`academic-translator.ts`](packages/modules/circulation/infrastructure/academic-translator.ts) |
-| 2 · DDD tático e arquitetura limpa | [o código por contexto](docs/architecture/07-codigo-por-contexto.html) | [`circulation/domain/`](packages/modules/circulation/domain/): `Student`, `Copy`, `Loan`, `Fine`, `Hold` e as portas em `ports.ts` |
-| 3 · Monólito modular, fatias e SDD | [o portal da arquitetura](docs/architecture.html) e [`specs/`](specs/README.md) | as fatias em [`circulation/slices/`](packages/modules/circulation/slices/), as fachadas em `public/` e as regras de fronteira em [`.dependency-cruiser.cjs`](.dependency-cruiser.cjs) |
+| 2 · DDD tático e arquitetura limpa | [o código por contexto](https://ravarmes.github.io/poc-ai-first-biblioteca/architecture/07-codigo-por-contexto.html) | [`circulation/domain/`](packages/modules/circulation/domain/): `Student`, `Copy`, `Loan`, `Fine`, `Hold` e as portas em `ports.ts` |
+| 3 · Monólito modular, fatias e SDD | [o portal da arquitetura](https://ravarmes.github.io/poc-ai-first-biblioteca/architecture.html) e [`specs/`](specs/README.md) | as fatias em [`circulation/slices/`](packages/modules/circulation/slices/), as fachadas em `public/` e as regras de fronteira em [`.dependency-cruiser.cjs`](.dependency-cruiser.cjs) |
 | 4 · TDD e mutação | os critérios `[n.n]` de cada `specs/*/spec.md` | os `*.test.ts` ao lado do código e o [`stryker.config.mjs`](stryker.config.mjs) |
 
 As decisões estão nas ADRs ([`docs/adr/README.md`](docs/adr/README.md)): 0001 a 0008 são as da biblioteca, e 0009 a 0030,
