@@ -5,7 +5,8 @@ Ele segue a arquitetura da PoC AI-First da SenseUp: monólito modular, fatias ve
 role por módulo no banco. A stack é uma só: **Node.js 22 + TypeScript** no backend (Hono e Kysely) e **React 19** no
 frontend (Vite, Tailwind e TanStack).
 
-> **Experimente sem instalar nada:** [a definir: o link do Codespaces ou da demonstração online, conforme a hospedagem escolhida]
+> **Experimente sem instalar nada:** abra o projeto num [Codespace](#rode-no-codespaces) ou, quando houver uma
+> demonstração no ar, use o endereço dela (`https://...-5173.app.github.dev`).
 
 ## O que o sistema faz
 
@@ -49,13 +50,35 @@ Basta o Node.js 22. O banco vem junto: por padrão, a API usa o PostgreSQL em me
 para.
 
 ```bash
-npm install
+git clone https://github.com/ravarmes/poc-ai-first-biblioteca.git
+cd poc-ai-first-biblioteca
+npm ci
 npm run dev        # a API, em http://127.0.0.1:3001
 npm run dev:web    # em outro terminal: o front, em http://localhost:5173
 ```
 
 Abra <http://localhost:5173>. Para usar um PostgreSQL 18 de verdade, defina `DATABASE_URL=postgres://...`; os schemas, as
 roles e as migrations estão descritos em [`contracts/db/README.md`](contracts/db/README.md).
+
+## Rode no Codespaces
+
+[![Abrir no GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ravarmes/poc-ai-first-biblioteca)
+
+O Codespace é uma máquina na nuvem com o VS Code no navegador. Este já vem com o Node.js 22 e instala as dependências ao
+ser criado, o que leva alguns minutos na primeira vez. O uso sai da cota grátis da sua conta do GitHub: 120 horas-núcleo
+por mês no plano Free, e a máquina de 2 núcleos gasta 2 por hora.
+
+- **Para estudar e mexer no código:** `npm run dev` e, em outro terminal, `npm run dev:web`. O Codespaces avisa quando a
+  porta 5173 abre, e o front aparece numa aba do navegador.
+- **Para mostrar a outras pessoas:** `npm run demo`. O comando compila o front, sobe a API e o front na porta 5173, torna
+  essa porta pública e mostra o endereço (`https://<codespace>-5173.app.github.dev`). Quem tiver o endereço abre o
+  sistema no navegador, sem conta no GitHub. Os dados ficam em memória, os mesmos para todos, e voltam ao início quando o
+  comando para (Ctrl+C).
+
+O endereço só funciona com o Codespace ligado. Ele desliga sozinho depois do tempo sem uso, que é de 30 minutos por padrão
+e pode ir até 4 horas em [github.com/settings/codespaces](https://github.com/settings/codespaces) ("Default idle
+timeout"). Se a porta não ficar pública sozinha, na aba **PORTS**, clique com o botão direito na 5173 e escolha **Port
+Visibility → Public**.
 
 ### Contas de demonstração
 
@@ -128,6 +151,7 @@ agregado e a mesma máquina de estados; uma spec só para o sistema todo atrasar
 ```text
 poc-ai-first-biblioteca-main/
 ├─ AGENTS.md · CLAUDE.md       Regras e glossário para os agentes de IA (e para quem revisa)
+├─ .devcontainer/              O ambiente do Codespaces (Node.js 22) e o script da demonstração (demo.sh)
 ├─ docs/
 │  ├─ dominio.md               Modelo estratégico: subdomínios, contextos, linguagem, mapa e regras
 │  ├─ constitution.md          Os 10 princípios do projeto
@@ -164,6 +188,7 @@ poc-ai-first-biblioteca-main/
 |---|---|
 | `npm run dev` | Sobe a API (porta 3001) |
 | `npm run dev:web` | Sobe o front (porta 5173), que repassa `/api` para a API |
+| `npm run demo` | Compila o front e sobe tudo na porta 5173; no Codespaces, torna a porta pública e mostra o endereço |
 | `npm test` | Roda a suíte toda: domínio, fatias, SQL e migrations no PGlite, rotas HTTP e componentes React |
 | `npm run typecheck` | Confere os tipos do TypeScript no monorepo inteiro |
 | `npm run deps:check` | Confere as fronteiras entre módulos, o núcleo e as camadas (`dependency-cruiser`) |

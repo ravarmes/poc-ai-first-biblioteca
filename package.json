@@ -19,6 +19,7 @@
     "db:migrate": "tsx apps/api-node/src/migrate-cli.ts",
     "dev": "tsx apps/api-node/src/main.ts",
     "dev:web": "npm --workspace @biblioteca/web-react run dev",
+    "demo": "bash .devcontainer/demo.sh",
     "build:api": "esbuild apps/api-node/src/main.ts --bundle --platform=node --format=esm --packages=external --outfile=apps/api-node/dist/main.mjs",
     "build:web": "npm --workspace @biblioteca/web-react run build",
     "build": "npm run typecheck && npm run build:api && npm run build:web"

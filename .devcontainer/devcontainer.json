@@ -1,0 +1,17 @@
+{
+  "name": "Biblioteca Universitária (Node.js 22)",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "postCreateCommand": "npm ci --no-audit --no-fund",
+  "forwardPorts": [5173, 3001],
+  "portsAttributes": {
+    "5173": { "label": "Biblioteca (front)", "onAutoForward": "notify" },
+    "3001": { "label": "API", "onAutoForward": "silent" }
+  },
+  "customizations": {
+    "codespaces": { "openFiles": ["README.md"] },
+    "vscode": { "extensions": ["vitest.explorer"] }
+  }
+}
