@@ -5,8 +5,9 @@ Ele segue a arquitetura da PoC AI-First da SenseUp: monólito modular, fatias ve
 role por módulo no banco. A stack é uma só: **Node.js 22 + TypeScript** no backend (Hono e Kysely) e **React 19** no
 frontend (Vite, Tailwind e TanStack).
 
-> **Experimente sem instalar nada:** abra o projeto num [Codespace](#rode-no-codespaces) ou, quando houver uma
-> demonstração no ar, use o endereço dela (`https://...-5173.app.github.dev`).
+> **Experimente sem instalar nada:** abra a demonstração das aulas,
+> <https://psychic-giggle-69576pvqv6w3w7j-5173.app.github.dev/>, que fica no ar enquanto o Codespace do professor está
+> ligado, ou rode o projeto no seu próprio [Codespace](#rode-no-codespaces).
 
 ## O que o sistema faz
 
@@ -70,14 +71,16 @@ por mês no plano Free, e a máquina de 2 núcleos gasta 2 por hora.
 - **Para estudar e mexer no código:** `npm run dev` e, em outro terminal, `npm run dev:web`. O Codespaces avisa quando a
   porta 5173 abre, e o front aparece numa aba do navegador.
 - **Para mostrar a outras pessoas:** `npm run demo`. O comando compila o front, sobe a API e o front na porta 5173, torna
-  essa porta pública e mostra o endereço (`https://<codespace>-5173.app.github.dev`). Quem tiver o endereço abre o
-  sistema no navegador, sem conta no GitHub. Os dados ficam em memória, os mesmos para todos, e voltam ao início quando o
-  comando para (Ctrl+C).
+  essa porta pública e mostra o endereço (`https://<codespace>-5173.app.github.dev`; o da demonstração das aulas é
+  <https://psychic-giggle-69576pvqv6w3w7j-5173.app.github.dev/>). Quem tiver o endereço abre o sistema no navegador,
+  sem conta no GitHub. Os dados ficam em memória, os mesmos para todos, e voltam ao início quando o comando para
+  (Ctrl+C).
 
-O endereço só funciona com o Codespace ligado. Ele desliga sozinho depois do tempo sem uso, que é de 30 minutos por padrão
-e pode ir até 4 horas em [github.com/settings/codespaces](https://github.com/settings/codespaces) ("Default idle
-timeout"). Se a porta não ficar pública sozinha, na aba **PORTS**, clique com o botão direito na 5173 e escolha **Port
-Visibility → Public**.
+O endereço leva o nome do Codespace e é o mesmo enquanto ele existir; o GitHub apaga o Codespace que fica 30 dias parado,
+e um Codespace novo tem outro endereço. O endereço só funciona com o Codespace ligado, e ele desliga sozinho depois do
+tempo sem uso, que é de 30 minutos por padrão e pode ir até 4 horas em
+[github.com/settings/codespaces](https://github.com/settings/codespaces) ("Default idle timeout"). Se a porta não ficar
+pública sozinha, na aba **PORTS**, clique com o botão direito na 5173 e escolha **Port Visibility → Public**.
 
 ### Contas de demonstração
 
