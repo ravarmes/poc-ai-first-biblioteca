@@ -14,10 +14,14 @@ const proxy = {
 // que o Vite recusa por padrão. Fora do Codespaces a variável não existe e vale o padrão do Vite (localhost e IPs).
 const codespacesDomain = env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN;
 const allowedHosts = codespacesDomain ? [`.${codespacesDomain}`] : undefined;
+// No container do Codespace, o Node 22 resolve "localhost" para ::1 (o /etc/hosts do Docker lista os dois), e o Vite
+// escutaria só no IPv6, onde o encaminhamento de portas não chega: a página não abre. Lá, escuta em todos os endereços
+// do container (só a porta encaminhada sai dele). Fora do Codespaces, fica o padrão do Vite: localhost, sem expor na rede.
+const host = codespacesDomain ? true : undefined;
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: { port, allowedHosts, proxy },
+  server: { host, port, allowedHosts, proxy },
   // `npm run demo` serve o build pelo preview: mesma porta, mesmo repasse de /api para a API.
-  preview: { port, strictPort: true, allowedHosts, proxy },
+  preview: { host, port, strictPort: true, allowedHosts, proxy },
 });
